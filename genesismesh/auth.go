@@ -1,6 +1,7 @@
 package genesismesh
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -25,6 +26,20 @@ func canonicalJSON(v interface{}) ([]byte, error) {
 	return marshalCanonical(generic)
 }
 
+// marshalString encodes a string as JSON without HTML-escaping < > &.
+// Python's json.dumps does not escape these characters, so we must match it.
+func marshalString(s string) []byte {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(s)
+	b := buf.Bytes()
+	if len(b) > 0 && b[len(b)-1] == '\n' {
+		b = b[:len(b)-1]
+	}
+	return b
+}
+
 func marshalCanonical(v interface{}) ([]byte, error) {
 	switch val := v.(type) {
 	case map[string]interface{}:
@@ -38,8 +53,7 @@ func marshalCanonical(v interface{}) ([]byte, error) {
 			if i > 0 {
 				buf = append(buf, ',')
 			}
-			kb, _ := json.Marshal(k)
-			buf = append(buf, kb...)
+			buf = append(buf, marshalString(k)...)
 			buf = append(buf, ':')
 			vb, err := marshalCanonical(val[k])
 			if err != nil {
@@ -63,6 +77,8 @@ func marshalCanonical(v interface{}) ([]byte, error) {
 		}
 		buf = append(buf, ']')
 		return buf, nil
+	case string:
+		return marshalString(val), nil
 	default:
 		return json.Marshal(v)
 	}
@@ -96,7 +112,7 @@ type AdminHeaders struct {
 // body must be JSON-serialisable. The signature covers
 // canonicalJSON({body, key_id, nonce, timestamp}).
 func BuildAdminHeaders(body interface{}, keyID string, privateKey ed25519.PrivateKey) (AdminHeaders, error) {
-	timestamp := time.Now().UTC().Format(time.RFC3339)
+	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000") + "Z"
 	nonce := uuid.New().String()
 
 	payload := map[string]interface{}{
@@ -112,7 +128,7 @@ func BuildAdminHeaders(body interface{}, keyID string, privateKey ed25519.Privat
 	sig := ed25519.Sign(privateKey, canonical)
 	return AdminHeaders{
 		KeyID:     keyID,
-		Signature: base64.RawURLEncoding.EncodeToString(sig),
+		Signature: base64.StdEncoding.EncodeToString(sig),
 		Timestamp: timestamp,
 		Nonce:     nonce,
 	}, nil

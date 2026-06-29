@@ -58,20 +58,22 @@ func TestAgreementClient_Offer(t *testing.T) {
 			http.Error(w, "missing admin header", 401)
 			return
 		}
-		respondJSON(w, AgreementRecord{AgreementID: "agr-1", Status: "offered"})
+		respondJSON(w, OfferRecord{OfferID: "offer-1"})
 	})
 	rec, err := c.Agreement.Offer(context.Background(), CapabilityOffer{
 		OfferorSovereignID:   "NA-A",
 		ResponderSovereignID: "NA-B",
 		Capabilities:         []string{"read"},
 		Roles:                []string{"role:client"},
-		ValidityHours:        24,
+		ValidFrom:            "2026-01-01T00:00:00.000Z",
+		ValidUntil:           "2027-01-01T00:00:00.000Z",
+		ExpiresAt:            "2026-01-08T00:00:00.000Z",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.AgreementID != "agr-1" {
-		t.Errorf("agreement_id = %q", rec.AgreementID)
+	if rec.OfferID != "offer-1" {
+		t.Errorf("offer_id = %q", rec.OfferID)
 	}
 }
 
@@ -100,10 +102,10 @@ func TestEvidenceClient_Build(t *testing.T) {
 		respondJSON(w, TrustEvidence{EvidenceID: "ev-1", Verdict: "allow"})
 	})
 	ev, err := c.Evidence.Build(context.Background(), TrustDecision{
-		DecisionID: "dec-1",
-		SubjectID:  "agent-a",
-		Verdict:    "allow",
-		Reason:     "policy check passed",
+		SourceSovereignID: "ALPHA-NA",
+		TargetSovereignID: "BETA-NA",
+		Verdict:           "allow",
+		Reason:            "policy check passed",
 	})
 	if err != nil {
 		t.Fatal(err)
