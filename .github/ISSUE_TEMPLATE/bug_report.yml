@@ -1,0 +1,78 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Fill in as much as you can — it helps us reproduce and fix it faster.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong? One clear sentence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal code or sequence of calls that triggers the bug.
+      placeholder: |
+        ```go
+        client, _ := genesismesh.NewClient(genesismesh.ClientOptions{ ... })
+        _, err := client.Evidence.Build(ctx, genesismesh.TrustDecision{ ... })
+        // err is unexpected
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include the full error message.
+    validations:
+      required: true
+
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK version
+      placeholder: "0.54.0"
+    validations:
+      required: true
+
+  - type: input
+    id: go-version
+    attributes:
+      label: Go version
+      placeholder: "1.22.4"
+    validations:
+      required: true
+
+  - type: input
+    id: na-version
+    attributes:
+      label: NA version (if known)
+      placeholder: "0.54.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — OS, NA error response body.
+    validations:
+      required: false

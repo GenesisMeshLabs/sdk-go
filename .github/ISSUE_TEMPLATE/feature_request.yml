@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a new sub-client method, type, or behaviour
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests that align with the Genesis Mesh NA HTTP API surface are most likely to be accepted. Check [docs/api/trust-http.md](https://github.com/GenesisMeshLabs/genesismesh/blob/main/docs/api/trust-http.md) first to see if the route already exists.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can you not do today, or what is harder than it should be?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What API would you like to see? Include a code sketch if helpful.
+      placeholder: |
+        ```go
+        err := client.Agreement.Cancel(ctx, agreementID)
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: na-route
+    attributes:
+      label: NA HTTP route (if applicable)
+      description: Which NA route does this correspond to? e.g. `DELETE /admin/agreements/:id`
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds exist today? Why are they insufficient?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
