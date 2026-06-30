@@ -198,7 +198,8 @@ The `pkg.go.dev` index auto-discovers the module within minutes of the tag push.
 When acting as an AI coding agent in this repository:
 
 1. Read this file before making changes.
-2. Identify which release milestone (v0.54 Go, v0.55 C#) the change supports.
+2. Identify which Phase 2 goal the change supports (external operator onboarding,
+   Atlas integration, RFC ratification, conformance validation).
 3. Keep changes small. One method → one test. One sub-client → one test file.
 4. Preserve layer boundaries. No signing logic in sub-clients. No domain
    knowledge in `transport.go`.
@@ -209,3 +210,8 @@ When acting as an AI coding agent in this repository:
    field, prerequisite call), add it to the "Known constraints" table in this
    file AND cover it with a negative test.
 9. Confirm before destructive operations. Approval once does not generalize.
+10. To validate Go SDK output against the protocol reference, run the
+    conformance test harness at `genesismesh/conformance/` in the main repo:
+    `python conformance/runner.py --sdk go` after generating vectors with
+    `python conformance/generate_vectors.py`. The vectors define the canonical
+    wire format that all SDK implementations must match.
