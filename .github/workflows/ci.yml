@@ -28,6 +28,9 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Verify release version declaration
+        run: grep -Eq '^0\.[0-9]+\.[0-9]+$' VERSION
+
       - name: Build
         run: go build ./...
 

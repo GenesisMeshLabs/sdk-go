@@ -24,6 +24,13 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Verify release tag matches declared version
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          DECLARED_VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$TAG_VERSION" = "$DECLARED_VERSION"
+
       - name: Build
         run: go build ./...
 

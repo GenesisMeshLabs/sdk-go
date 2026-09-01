@@ -174,8 +174,11 @@ Every public method must have:
 
 ## Release process
 
-This SDK follows the same release process as the main Python repo. Every
-version shipped must:
+This SDK follows the same release process as the main Python repo. Starting
+with v0.56.0, the core and all official SDKs use one coordinated version. The
+`VERSION` file and release tag must match.
+
+Every version shipped must:
 
 1. Pass `go build ./...`, `go vet ./...`, and `go test -race ./...`.
 2. Have a CHANGELOG entry in the main repo's `CHANGELOG.md`.

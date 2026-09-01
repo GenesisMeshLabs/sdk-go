@@ -7,6 +7,17 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.56.0] - Unreleased
+
+### Changed
+
+- Joined the coordinated Genesis Mesh v0.56.0 release train.
+- Added a shared `VERSION` declaration and publishing guard that rejects tags
+  which do not match the declared module release.
+- Updated the supported security line to `0.56.x`.
+
+---
+
 ## [0.54.0] — 2026-06-29
 
 ### Added
