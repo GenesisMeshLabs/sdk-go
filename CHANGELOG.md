@@ -7,11 +7,15 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
-## [0.56.0] - Unreleased
+## [0.56.0] - 2026-09-01
 
 ### Changed
 
 - Joined the coordinated Genesis Mesh v0.56.0 release train.
+- Aligned canonical JSON, timestamps, signatures, request envelopes, and
+  response types with the live Network Authority wire format.
+- Updated agreement offer and acceptance types to match the current protocol.
+- Added per-domain test coverage for all seven SDK clients.
 - Added a shared `VERSION` declaration and publishing guard that rejects tags
   which do not match the declared module release.
 - Updated the supported security line to `0.56.x`.
@@ -37,4 +41,5 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 - 19 tests across auth, errors, and all sub-client paths (`-race` clean)
 - CI matrix: Go 1.22 and 1.23
 
+[0.56.0]: https://github.com/GenesisMeshLabs/sdk-go/compare/v0.54.0...v0.56.0
 [0.54.0]: https://github.com/GenesisMeshLabs/sdk-go/releases/tag/v0.54.0
