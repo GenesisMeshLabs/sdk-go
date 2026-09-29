@@ -42,3 +42,33 @@ jobs:
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
+
+  release-train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release train (Genesis Mesh core leads every version)
+        shell: bash
+        run: |
+            set -euo pipefail
+            if [ -f VERSION ]; then
+              version="$(tr -d '[:space:]' < VERSION)"
+            else
+              version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+            fi
+            core="$(curl -fsSL --retry 3 https://raw.githubusercontent.com/GenesisMeshLabs/genesismesh/main/VERSION | tr -d '[:space:]')"
+            if [ "$(printf '%s\n%s\n' "$version" "$core" | sort -V | tail -n 1)" != "$core" ]; then
+              echo "::error::Version $version is ahead of the Genesis Mesh core ($core). The core leads every coordinated version; see genesismesh docs/development/versioning.md."
+              exit 1
+            fi
+            if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+              if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+                echo "::error::Tag $GITHUB_REF_NAME does not match version $version."
+                exit 1
+              fi
+              if [ "$version" != "$core" ] && ! git ls-remote --exit-code --tags https://github.com/GenesisMeshLabs/genesismesh.git "refs/tags/v$version" > /dev/null; then
+                echo "::error::Release $version is not a Genesis Mesh core version (core is $core). Release the core first."
+                exit 1
+              fi
+            fi
+            echo "Release train verified: $version (core $core)"
