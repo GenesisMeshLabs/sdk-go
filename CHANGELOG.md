@@ -7,6 +7,16 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.58.0] - 2026-09-29
+
+Coordinated Genesis Mesh v0.58.0 release. No functional changes; the SDK passes its
+compatibility tests against the v0.58.0 Network Authority. Version 0.57 was skipped
+across the train (see the core `docs/development/versioning.md`).
+
+### Changed
+
+- CI and publishing now fail if this component's version is ahead of the Genesis Mesh core version.
+
 ## [0.56.0] - 2026-09-01
 
 ### Changed
