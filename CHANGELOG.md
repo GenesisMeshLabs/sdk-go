@@ -7,6 +7,13 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.60.0] - 2026-10-01
+
+Coordinated Genesis Mesh v0.60.0 release. No functional changes; the core adds
+optional high availability for the Network Authority (PostgreSQL, several
+instances behind a load balancer). This SDK keeps using one NA URL, which can
+be the load balancer.
+
 ## [0.59.1] - 2026-10-01
 
 Coordinated Genesis Mesh v0.59.1 release. No functional changes; the TypeScript
