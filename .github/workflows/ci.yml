@@ -56,7 +56,8 @@ jobs:
             else
               version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
             fi
-            core="$(curl -fsSL --retry 3 https://raw.githubusercontent.com/GenesisMeshLabs/genesismesh/main/VERSION | tr -d '[:space:]')"
+            # The contents API is read fresh; raw.githubusercontent.com caches VERSION for minutes after a core merge.
+            core="$(curl -fsSL --retry 3 -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/GenesisMeshLabs/genesismesh/contents/VERSION?ref=main" | tr -d '[:space:]')"
             if [ "$(printf '%s\n%s\n' "$version" "$core" | sort -V | tail -n 1)" != "$core" ]; then
               echo "::error::Version $version is ahead of the Genesis Mesh core ($core). The core leads every coordinated version; see genesismesh docs/development/versioning.md."
               exit 1
