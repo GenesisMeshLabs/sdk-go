@@ -7,6 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.59.0] - 2026-10-01
+
+Coordinated Genesis Mesh v0.59.0 release. No functional changes; the core adds
+the Network Authority evidence store, which this SDK does not wrap yet.
+
 ## [0.58.1] - 2026-09-29
 
 Coordinated Genesis Mesh v0.58.1 release. No functional changes; the core adds
