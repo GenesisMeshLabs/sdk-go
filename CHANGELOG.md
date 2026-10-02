@@ -7,6 +7,14 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.62.0] - 2026-10-02
+
+Coordinated Genesis Mesh v0.62.0 release: the v1 public contract and security
+review. No changes in this SDK. On the Network Authority, accepting an
+agreement (`/admin/agreements/accept`) and creating a data license policy
+(`/admin/data-usage/policy`) now require a privileged operator key; a
+standard key gets `403 insufficient_operator_tier`.
+
 ## [0.61.1] - 2026-10-02
 
 Coordinated Genesis Mesh v0.61.1 release.
