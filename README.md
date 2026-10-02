@@ -188,6 +188,35 @@ activePol, err := client.DataUsage.GetPolicy(ctx)
 dv, err := client.DataUsage.Verify(ctx, map[string]interface{}{"intent": intent, "policy": pol})
 ```
 
+## Offline verification
+
+From 0.61.0 the SDK verifies Network Authority records locally, using
+canonical JSON and Ed25519 only, without calling the NA. The reason codes are
+the Python reference's. Pass the JSON as received.
+
+```go
+a, err := genesismesh.VerifyAgreement(agreementJSON, []string{offererKey}, []string{responderKey}, "")
+// a.Accepted, a.Reason: "accepted", "invalid_offerer_signature", "graph_digest_mismatch", ...
+
+d, err := genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionVerifyOptions{
+	OperatorPublicKeys:  []string{naPublicKey},
+	ExpectedPolicies:    [][]byte{policyJSON},  // the decision must bind exactly these versions
+	ExpectedAttestation: attestationJSON,       // optional
+})
+// d.Accepted (verified), d.Authorized (ALLOW or DENY), d.Reason
+
+ok, err := genesismesh.VerifyDataLicensePolicySignature(policyJSON, []string{licensorKey})
+v, err := genesismesh.VerifyDataAccessIntent(intentJSON, policyJSON, []string{agentKey}, time.Now())
+// v.Valid, v.ViolationReason, v.Violations
+```
+
+An accepted DENY has `Accepted` true and `Authorized` false: the decision
+verified, and it denies. Revocation is not checked offline.
+`CanonicalJSON`, `PolicyDigest`, `AttestationDigest` and `PolicySetDigest`
+reproduce the reference forms. The verifiers pass the shared `interop`
+conformance vectors (`genesismesh/testdata/conformance/interop.json`), and the
+core's cross-language scenario runs them against a live NA.
+
 ## Raw admin calls
 
 For NA routes not yet covered by a sub-client (e.g. `/admin/recognition-treaties`),

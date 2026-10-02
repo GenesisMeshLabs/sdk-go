@@ -1,12 +1,10 @@
 package genesismesh
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,64 +22,6 @@ func canonicalJSON(v interface{}) ([]byte, error) {
 		return nil, err
 	}
 	return marshalCanonical(generic)
-}
-
-// marshalString encodes a string as JSON without HTML-escaping < > &.
-// Python's json.dumps does not escape these characters, so we must match it.
-func marshalString(s string) []byte {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(s)
-	b := buf.Bytes()
-	if len(b) > 0 && b[len(b)-1] == '\n' {
-		b = b[:len(b)-1]
-	}
-	return b
-}
-
-func marshalCanonical(v interface{}) ([]byte, error) {
-	switch val := v.(type) {
-	case map[string]interface{}:
-		keys := make([]string, 0, len(val))
-		for k := range val {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		buf := []byte{'{'}
-		for i, k := range keys {
-			if i > 0 {
-				buf = append(buf, ',')
-			}
-			buf = append(buf, marshalString(k)...)
-			buf = append(buf, ':')
-			vb, err := marshalCanonical(val[k])
-			if err != nil {
-				return nil, err
-			}
-			buf = append(buf, vb...)
-		}
-		buf = append(buf, '}')
-		return buf, nil
-	case []interface{}:
-		buf := []byte{'['}
-		for i, item := range val {
-			if i > 0 {
-				buf = append(buf, ',')
-			}
-			vb, err := marshalCanonical(item)
-			if err != nil {
-				return nil, err
-			}
-			buf = append(buf, vb...)
-		}
-		buf = append(buf, ']')
-		return buf, nil
-	case string:
-		return marshalString(val), nil
-	default:
-		return json.Marshal(v)
-	}
 }
 
 // LoadPrivateKey decodes a base64-encoded 32-byte Ed25519 seed.
