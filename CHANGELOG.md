@@ -7,6 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.63.0] - 2026-10-02
+
+Coordinated Genesis Mesh v0.63.0 release: pilot readiness. No changes in
+this SDK.
+
 ## [0.62.0] - 2026-10-02
 
 Coordinated Genesis Mesh v0.62.0 release: the v1 public contract and security
