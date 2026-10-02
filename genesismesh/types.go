@@ -119,24 +119,44 @@ type CapabilityMembershipProof struct {
 	LeafHash     string          `json:"leaf_hash"`
 }
 
-// ConsensusVote is returned by POST /admin/consensus/vote.
+// ConsensusVote is a validator's signed vote on a JustificationProof
+// (Python ValidatorVote), returned by POST /admin/consensus/vote. Pass it back
+// unchanged when assembling a proof: every field is covered by the signature.
 type ConsensusVote struct {
-	VoteID      string          `json:"vote_id"`
-	ProposalID  string          `json:"proposal_id"`
-	ValidatorID string          `json:"validator_id"`
-	Decision    string          `json:"decision"`
-	Signature   json.RawMessage `json:"signature,omitempty"`
-	CastAt      string          `json:"cast_at"`
+	VoteID               string          `json:"vote_id"`
+	ProofID              string          `json:"proof_id"`
+	DecisionID           string          `json:"decision_id"`
+	ValidatorSovereignID string          `json:"validator_sovereign_id"`
+	Vote                 bool            `json:"vote"` // true approves
+	Reason               *string         `json:"reason"`
+	VotedAt              string          `json:"voted_at"`
+	ContextDigest        *string         `json:"context_digest"` // required on approve votes (v0.38)
+	Signature            json.RawMessage `json:"signature"`
 }
 
-// ConsensusProof is returned by POST /admin/consensus/proof.
+// ConsensusProof is a K-of-N approval over a JustificationProof, signed by the
+// assembler (Python ConsensusProof). Returned by POST /admin/consensus/proof.
 type ConsensusProof struct {
-	ProofID     string          `json:"proof_id"`
-	ProposalID  string          `json:"proposal_id"`
-	Threshold   int             `json:"threshold"`
-	Votes       []ConsensusVote `json:"votes"`
-	Signature   json.RawMessage `json:"signature,omitempty"`
-	AssembledAt string          `json:"assembled_at"`
+	ConsensusID             string          `json:"consensus_id"`
+	ProofID                 string          `json:"proof_id"`
+	DecisionID              string          `json:"decision_id"`
+	RequiredThreshold       int             `json:"required_threshold"` // K: distinct named validators
+	ValidatorSovereignIDs   []string        `json:"validator_sovereign_ids"`
+	Votes                   []ConsensusVote `json:"votes"`
+	ReachedAt               string          `json:"reached_at"`
+	ExpiresAt               string          `json:"expires_at"`
+	CascadeAssessmentDigest *string         `json:"cascade_assessment_digest"`
+	Signature               json.RawMessage `json:"signature"`
+}
+
+// ConsensusVerification is returned by POST /consensus/verify. Reason is one of
+// valid, missing_signature, invalid_assembler_signature, threshold_not_met,
+// invalid_vote_signature, unknown_validator_key, vote_not_in_validator_set,
+// expired, proof_id_mismatch, cascade_detected, missing_context_digest.
+type ConsensusVerification struct {
+	Valid       bool    `json:"valid"`
+	Reason      string  `json:"reason"`
+	ConsensusID *string `json:"consensus_id"`
 }
 
 // DataSourceDescriptor describes a data source in a DataAccessIntent.
