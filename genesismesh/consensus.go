@@ -21,7 +21,7 @@ func (c *ConsensusClient) Proof(ctx context.Context, body map[string]interface{}
 
 // Verify verifies a consensus proof and threshold (public route).
 // POST /consensus/verify
-func (c *ConsensusClient) Verify(ctx context.Context, body map[string]interface{}) (*VerifyResult, error) {
-	var out VerifyResult
+func (c *ConsensusClient) Verify(ctx context.Context, body map[string]interface{}) (*ConsensusVerification, error) {
+	var out ConsensusVerification
 	return &out, c.t.publicPost(ctx, "/consensus/verify", body, &out)
 }

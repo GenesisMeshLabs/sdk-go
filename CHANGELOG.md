@@ -7,6 +7,22 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.61.1] - 2026-10-02
+
+Coordinated Genesis Mesh v0.61.1 release.
+
+### Fixed
+
+- `ConsensusVote` and `ConsensusProof` now match the wire format (Python
+  `ValidatorVote` and `ConsensusProof`). They previously used fields the NA
+  never sends (`proposal_id`, `decision`, `threshold`, `assembled_at`), so
+  decoded votes and proofs were empty and could not be passed back. A
+  Python-signed proof from the `consensus` conformance vectors now round-trips
+  to the same canonical JSON.
+- `Consensus.Verify` returns `ConsensusVerification` (`valid`, `reason`,
+  `consensus_id`).
+- README consensus example uses the real request fields.
+
 ## [0.61.0] - 2026-10-02
 
 Coordinated Genesis Mesh v0.61.0 release: the cross-language interoperability

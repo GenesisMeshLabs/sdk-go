@@ -141,21 +141,32 @@ dv, err := client.Disclosure.Verify(ctx, map[string]interface{}{"proof": proof})
 
 ### Consensus
 
+Validators vote on a justification proof: the `justification_proof` returned
+with a decision by `POST /admin/boundary/evaluate` (see Raw admin calls). Pass
+votes and proofs back unchanged; every field is covered by a signature.
+
 ```go
-// Cast a validator vote (admin)
-vote, err := client.Consensus.Vote(ctx, genesismesh.ConsensusVote{
-    Vote:   true,
-    Reason: "evidence satisfactory",
+// Cast a validator vote, signed by the NA as validator (admin)
+vote, err := client.Consensus.Vote(ctx, map[string]interface{}{
+    "justification_proof": justificationProof,
+    "vote":                true,
+    "reason":              "evidence satisfactory",
 })
 
-// Assemble a consensus proof (admin)
-cp, err := client.Consensus.Proof(ctx, genesismesh.ConsensusProof{
-    RequiredThreshold:    1,
-    ValidatorSovereignIDs: []string{"ALPHA"},
+// Assemble a K-of-N consensus proof (admin)
+cp, err := client.Consensus.Proof(ctx, map[string]interface{}{
+    "justification_proof":     justificationProof,
+    "votes":                   []genesismesh.ConsensusVote{*vote},
+    "required_threshold":      1,
+    "validator_sovereign_ids": []string{vote.ValidatorSovereignID},
 })
 
-// Verify the consensus proof (no auth required)
-cv, err := client.Consensus.Verify(ctx, map[string]interface{}{"proof": cp})
+// Verify against the validators' keys (no auth required)
+cv, err := client.Consensus.Verify(ctx, map[string]interface{}{
+    "proof":                 cp,
+    "validator_public_keys": map[string]string{vote.ValidatorSovereignID: validatorPublicKey},
+})
+// cv.Valid, cv.Reason ("valid", "threshold_not_met", "invalid_vote_signature", ...)
 ```
 
 ### DataUsage
