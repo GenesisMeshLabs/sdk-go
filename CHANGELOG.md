@@ -7,6 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.63.1] - 2026-10-02
+
+Coordinated Genesis Mesh v0.63.1 release: configurable Network Authority rate
+limits. No changes in this SDK.
+
 ## [0.63.0] - 2026-10-02
 
 Coordinated Genesis Mesh v0.63.0 release: pilot readiness. No changes in
