@@ -7,6 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.64.1] - 2026-10-03
+
+Coordinated Genesis Mesh v0.64.1 release: the Network Authority republishes an
+expiring CRL. No changes in this SDK.
+
 ## [0.64.0] - 2026-10-03
 
 Coordinated Genesis Mesh v0.64.0 release: the Rust SDK and the Rust gateway
