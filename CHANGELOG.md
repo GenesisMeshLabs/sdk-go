@@ -7,6 +7,12 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.64.0] - 2026-10-03
+
+Coordinated Genesis Mesh v0.64.0 release: the Rust SDK and the Rust gateway
+reach governed-action parity (boundary policies, evidence store, offline
+verification). No changes in this SDK.
+
 ## [0.63.1] - 2026-10-02
 
 Coordinated Genesis Mesh v0.63.1 release: configurable Network Authority rate
