@@ -7,6 +7,12 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [0.65.0] - 2026-10-04
+
+Coordinated Genesis Mesh v0.65.0 release: demo access and a guided tour in the
+gateway, and the public reference federated with the live NA. No changes in
+this SDK.
+
 ## [0.64.1] - 2026-10-03
 
 Coordinated Genesis Mesh v0.64.1 release: the Network Authority republishes an
