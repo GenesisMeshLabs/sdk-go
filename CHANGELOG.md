@@ -7,6 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.0.1] - 2026-10-04
+
+Coordinated Genesis Mesh v1.0.1 release: gateway console fixes. No changes in
+this SDK.
+
 ## [1.0.0] - 2026-10-04
 
 Coordinated Genesis Mesh v1.0.0 release: the public contract is stable for
