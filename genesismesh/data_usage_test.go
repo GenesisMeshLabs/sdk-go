@@ -13,14 +13,20 @@ func TestDataUsageClient_CreatePolicy_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, DataLicensePolicy{
-			PolicyID:        "pol-1",
-			AllowedPurposes: []string{"analytics", "training"},
+		respondJSON(w, map[string]interface{}{
+			"policy_id":             "pol-1",
+			"licensor_sovereign_id": "NA-LOCAL",
+			"licensee_sovereign_id": "NA-PARTNER",
+			"allowed_access_types":  []string{"read", "aggregate"},
+			"valid_from":            "2026-07-01T00:00:00+00:00",
 		})
 	})
 	pol, err := c.DataUsage.CreatePolicy(context.Background(), map[string]interface{}{
-		"local_sovereign_id": "NA-LOCAL",
-		"allowed_purposes":   []string{"analytics", "training"},
+		"licensee_sovereign_id": "NA-PARTNER",
+		"allowed_source_ids":    []string{"src-1"},
+		"allowed_access_types":  []string{"read", "aggregate"},
+		"valid_from":            "2026-07-01T00:00:00+00:00",
+		"valid_until":           "2026-08-01T00:00:00+00:00",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -28,8 +34,14 @@ func TestDataUsageClient_CreatePolicy_HappyPath(t *testing.T) {
 	if pol.PolicyID != "pol-1" {
 		t.Errorf("policy_id = %q, want pol-1", pol.PolicyID)
 	}
-	if len(pol.AllowedPurposes) != 2 {
-		t.Errorf("allowed_purposes count = %d, want 2", len(pol.AllowedPurposes))
+	if len(pol.AllowedAccessTypes) != 2 {
+		t.Errorf("allowed_access_types count = %d, want 2", len(pol.AllowedAccessTypes))
+	}
+	if pol.LicensorSovereignID != "NA-LOCAL" || pol.LocalSovereignID != "NA-LOCAL" {
+		t.Errorf("licensor = %q, local = %q, want NA-LOCAL", pol.LicensorSovereignID, pol.LocalSovereignID)
+	}
+	if pol.IssuedAt != pol.ValidFrom {
+		t.Errorf("issued_at = %q, want valid_from %q", pol.IssuedAt, pol.ValidFrom)
 	}
 }
 
@@ -56,12 +68,13 @@ func TestDataUsageClient_CreateIntent_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, DataAccessIntent{
-			IntentID: "intent-1",
-			Sources: []DataSourceDescriptor{
-				{SourceID: "src-1", SourceType: "personal", OwnerSovereignID: "NA-OWNER"},
+		respondJSON(w, map[string]interface{}{
+			"intent_id": "intent-1",
+			"declared_sources": []map[string]interface{}{
+				{"source_id": "src-1", "source_type": "personal", "owner_sovereign_id": "NA-OWNER"},
 			},
-			AccessTypes: []string{"read"},
+			"declared_access_types": []string{"read"},
+			"declared_at":           "2026-07-01T12:00:00+00:00",
 		})
 	})
 	intent, err := c.DataUsage.CreateIntent(context.Background(), map[string]interface{}{
@@ -78,8 +91,11 @@ func TestDataUsageClient_CreateIntent_HappyPath(t *testing.T) {
 	if intent.IntentID != "intent-1" {
 		t.Errorf("intent_id = %q, want intent-1", intent.IntentID)
 	}
-	if len(intent.Sources) != 1 {
-		t.Errorf("sources count = %d, want 1", len(intent.Sources))
+	if len(intent.DeclaredSources) != 1 || len(intent.Sources) != 1 {
+		t.Errorf("declared_sources = %d, sources = %d, want 1", len(intent.DeclaredSources), len(intent.Sources))
+	}
+	if len(intent.AccessTypes) != 1 || intent.AccessTypes[0] != "read" {
+		t.Errorf("access_types = %v, want [read] from declared_access_types", intent.AccessTypes)
 	}
 }
 

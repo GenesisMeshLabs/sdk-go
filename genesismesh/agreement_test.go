@@ -78,7 +78,11 @@ func TestAgreementClient_Accept_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, AgreementRecord{AgreementID: "agr-1", Status: "active"})
+		respondJSON(w, map[string]interface{}{
+			"agreement_id":   "agr-1",
+			"agreed_terms":   map[string]interface{}{"capabilities": []string{"read"}},
+			"established_at": "2026-07-01T12:00:00+00:00",
+		})
 	})
 	agr, err := c.Agreement.Accept(context.Background(), &OfferRecord{OfferID: "offer-abc"})
 	if err != nil {
@@ -87,8 +91,11 @@ func TestAgreementClient_Accept_HappyPath(t *testing.T) {
 	if agr.AgreementID != "agr-1" {
 		t.Errorf("agreement_id = %q, want agr-1", agr.AgreementID)
 	}
-	if agr.Status != "active" {
-		t.Errorf("status = %q, want active", agr.Status)
+	if agr.EstablishedAt != "2026-07-01T12:00:00+00:00" || agr.CreatedAt != agr.EstablishedAt {
+		t.Errorf("established_at = %q, created_at = %q", agr.EstablishedAt, agr.CreatedAt)
+	}
+	if len(agr.Capabilities) != 1 || agr.Capabilities[0] != "read" {
+		t.Errorf("capabilities = %v, want [read] from agreed_terms", agr.Capabilities)
 	}
 }
 

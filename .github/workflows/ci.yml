@@ -37,11 +37,49 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Format
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
+
+  # Every client method against a running Network Authority: each typed
+  # result must model the JSON the NA sent (v1.0.2: most of them did not).
+  live-contract:
+    name: Live contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A coordinated change is tested against the core branch of the same
+      # name when it exists, and against main otherwise.
+      - name: Choose the core revision
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ref=main
+          if git ls-remote --exit-code --heads https://github.com/GenesisMeshLabs/genesismesh.git "refs/heads/$BRANCH" > /dev/null; then ref="$BRANCH"; fi
+          echo "Testing with core revision: $ref"
+          echo "CORE_REF=$ref" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          repository: GenesisMeshLabs/genesismesh
+          ref: ${{ env.CORE_REF }}
+          path: core
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ./core
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+      - name: Typed results match a live Network Authority
+        run: go test -tags live -count=1 -run TestLiveContract ./genesismesh
+        env:
+          GM_E2E_PYTHON: python
 
   release-train:
     runs-on: ubuntu-latest

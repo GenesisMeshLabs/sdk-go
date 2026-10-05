@@ -1,0 +1,444 @@
+{
+  "_comment": "Responses of a live 1.0.2 Network Authority to each SDK call, captured by the SDK contract check. The SDK response types must model exactly these fields (see the contract type tests).",
+  "agreement_accept": {
+    "agreed_terms": {
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "freshness_commitment": 0,
+      "scope": {},
+      "valid_from": "2026-10-05T09:02:32Z",
+      "valid_until": "2026-10-06T09:02:32Z"
+    },
+    "agreement_id": "a1be997d-07cf-4ca8-8515-b2889b20b14f",
+    "established_at": "2026-10-05T09:02:32.313675Z",
+    "expires_at": "2026-10-06T09:02:32Z",
+    "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+    "offer_id": "3dbe3134-c6c4-4bbc-8253-94528fd80908",
+    "offerer_evidence": {
+      "evaluated_at": "2026-10-05T09:02:32.291623+00:00",
+      "evidence_id": "14e8715d-e3aa-4fa9-82cd-a49f542e8cfa",
+      "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+      "hop_count": 1,
+      "issued_at": "2026-10-05T09:02:32.291616Z",
+      "issued_by": "na-contract",
+      "issuer_sovereign_id": "contract-na",
+      "metadata": {},
+      "reason": "treaty_expiring_soon",
+      "requested_roles": [],
+      "signals": [
+        {
+          "code": "treaty_expiring_soon",
+          "detail": "treaty 21f64d90-22ee-4e46-a2d9-daf84ad3027d (contract-na -> sovereign-b) expires 2026-10-06T09:02:21.178374+00:00",
+          "severity": "warn"
+        }
+      ],
+      "signatures": [
+        {
+          "key_id": "na-contract",
+          "sig": "B1Hl2H88gmxXqkONYEdkqi/THPABR2Zb8NBo9tY0XYGFeF8iV8aYfBGU+12BH8oT6LkN2r2DwDwvbszsJ3FIAQ=="
+        }
+      ],
+      "source_sovereign_id": "contract-na",
+      "target_sovereign_id": "sovereign-b",
+      "trusted": true,
+      "verdict": "warn"
+    },
+    "offerer_sovereign_id": "contract-na",
+    "responder_evidence": {
+      "evaluated_at": "2026-10-05T09:02:32.313716+00:00",
+      "evidence_id": "0894e727-3b1a-4bbe-9946-de97cf036485",
+      "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+      "hop_count": 0,
+      "issued_at": "2026-10-05T09:02:32.313675Z",
+      "issued_by": "na-contract",
+      "issuer_sovereign_id": "sovereign-b",
+      "metadata": {},
+      "reason": "no_active_treaty_path",
+      "requested_roles": [],
+      "signals": [
+        {
+          "code": "no_active_treaty_path",
+          "detail": "no active recognition path between sovereigns",
+          "severity": "block"
+        }
+      ],
+      "signatures": [
+        {
+          "key_id": "na-contract",
+          "sig": "cIFlJs/1KHGqDal1VRHXM4DbZrs0cUo+UcoI1XKYZjbkWEmpEWitxzgzA2+BFF8gK0DqrptiNSKIdQ0k65kdCw=="
+        }
+      ],
+      "source_sovereign_id": "sovereign-b",
+      "target_sovereign_id": "contract-na",
+      "trusted": false,
+      "verdict": "block"
+    },
+    "responder_sovereign_id": "sovereign-b",
+    "signatures": [
+      {
+        "key_id": "na-contract",
+        "sig": "kuFnlGBWJj96Gd9Oers9ixuJkJpqpi5IeLUyn8a95+ywzRmnyzHkkcnQ/poaLZwW5K7QuIrc6XZibaK4wzFEBQ=="
+      }
+    ]
+  },
+  "agreement_counter": {
+    "agreed_terms": {
+      "capabilities": [
+        "read"
+      ],
+      "freshness_commitment": 0,
+      "scope": {},
+      "valid_from": "2026-10-05T09:02:32Z",
+      "valid_until": "2026-10-05T21:02:32Z"
+    },
+    "expires_at": "2026-10-05T10:02:32Z",
+    "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+    "offer_id": "3dbe3134-c6c4-4bbc-8253-94528fd80908",
+    "offerer_evidence": {
+      "evaluated_at": "2026-10-05T09:02:32.291623+00:00",
+      "evidence_id": "14e8715d-e3aa-4fa9-82cd-a49f542e8cfa",
+      "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+      "hop_count": 1,
+      "issued_at": "2026-10-05T09:02:32.291616Z",
+      "issued_by": "na-contract",
+      "issuer_sovereign_id": "contract-na",
+      "metadata": {},
+      "reason": "treaty_expiring_soon",
+      "requested_roles": [],
+      "signals": [
+        {
+          "code": "treaty_expiring_soon",
+          "detail": "treaty 21f64d90-22ee-4e46-a2d9-daf84ad3027d (contract-na -> sovereign-b) expires 2026-10-06T09:02:21.178374+00:00",
+          "severity": "warn"
+        }
+      ],
+      "signatures": [
+        {
+          "key_id": "na-contract",
+          "sig": "B1Hl2H88gmxXqkONYEdkqi/THPABR2Zb8NBo9tY0XYGFeF8iV8aYfBGU+12BH8oT6LkN2r2DwDwvbszsJ3FIAQ=="
+        }
+      ],
+      "source_sovereign_id": "contract-na",
+      "target_sovereign_id": "sovereign-b",
+      "trusted": true,
+      "verdict": "warn"
+    },
+    "offerer_sovereign_id": "contract-na",
+    "responder_evidence": {
+      "evaluated_at": "2026-10-05T09:02:32.302782+00:00",
+      "evidence_id": "082e3411-60e8-4b0f-a7a1-36cbf35baa21",
+      "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+      "hop_count": 0,
+      "issued_at": "2026-10-05T09:02:32.302764Z",
+      "issued_by": "na-contract",
+      "issuer_sovereign_id": "sovereign-b",
+      "metadata": {},
+      "reason": "no_active_treaty_path",
+      "requested_roles": [],
+      "signals": [
+        {
+          "code": "no_active_treaty_path",
+          "detail": "no active recognition path between sovereigns",
+          "severity": "block"
+        }
+      ],
+      "signatures": [
+        {
+          "key_id": "na-contract",
+          "sig": "wsnlS07LwNJAP7eTVuTVTHWeouI2LjS6bVRIHKPt1HTM472IYDnV1oq1e/jV9RGS0NuBS0Tfp0W27V99Oa6GCg=="
+        }
+      ],
+      "source_sovereign_id": "sovereign-b",
+      "target_sovereign_id": "contract-na",
+      "trusted": false,
+      "verdict": "block"
+    },
+    "responder_sovereign_id": "sovereign-b",
+    "signatures": [
+      {
+        "key_id": "na-contract",
+        "sig": "gBVx0JJKY40hlr2ByI3yDr93IJRVsOtQhDRZ1cJzhG5hEMSzz9E9w/pcKk7X4wLD07Wj4745ZDYYJWnhizrlCQ=="
+      }
+    ]
+  },
+  "agreement_offer": {
+    "created_at": "2026-10-05T09:02:32.291616Z",
+    "expires_at": "2026-10-05T10:02:32Z",
+    "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+    "offer_id": "3dbe3134-c6c4-4bbc-8253-94528fd80908",
+    "offerer_evidence": {
+      "evaluated_at": "2026-10-05T09:02:32.291623+00:00",
+      "evidence_id": "14e8715d-e3aa-4fa9-82cd-a49f542e8cfa",
+      "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+      "hop_count": 1,
+      "issued_at": "2026-10-05T09:02:32.291616Z",
+      "issued_by": "na-contract",
+      "issuer_sovereign_id": "contract-na",
+      "metadata": {},
+      "reason": "treaty_expiring_soon",
+      "requested_roles": [],
+      "signals": [
+        {
+          "code": "treaty_expiring_soon",
+          "detail": "treaty 21f64d90-22ee-4e46-a2d9-daf84ad3027d (contract-na -> sovereign-b) expires 2026-10-06T09:02:21.178374+00:00",
+          "severity": "warn"
+        }
+      ],
+      "signatures": [
+        {
+          "key_id": "na-contract",
+          "sig": "B1Hl2H88gmxXqkONYEdkqi/THPABR2Zb8NBo9tY0XYGFeF8iV8aYfBGU+12BH8oT6LkN2r2DwDwvbszsJ3FIAQ=="
+        }
+      ],
+      "source_sovereign_id": "contract-na",
+      "target_sovereign_id": "sovereign-b",
+      "trusted": true,
+      "verdict": "warn"
+    },
+    "offerer_sovereign_id": "contract-na",
+    "requested_terms": {
+      "capabilities": [
+        "read",
+        "write"
+      ],
+      "freshness_commitment": 0,
+      "scope": {},
+      "valid_from": "2026-10-05T09:02:32Z",
+      "valid_until": "2026-10-06T09:02:32Z"
+    },
+    "responder_sovereign_id": "sovereign-b",
+    "signatures": [
+      {
+        "key_id": "na-contract",
+        "sig": "z0fuI+OzzJvttD5zm6C++Dbth+f4ID5aOaxqd1eiky8tiGq4Q5B9vjsaNfdAqaOV67AEG9NKV5Ke+tuk9vzvDw=="
+      }
+    ]
+  },
+  "agreement_verify": {
+    "accepted": true,
+    "agreement_id": "a1be997d-07cf-4ca8-8515-b2889b20b14f",
+    "reason": "accepted"
+  },
+  "attestation_issue": {
+    "attestation_id": "91dd1726-3333-4639-b3bb-3ae119c76360",
+    "claims": {},
+    "expires_at": "2026-10-12T09:02:32.452474Z",
+    "issued_at": "2026-10-05T09:02:32.452474Z",
+    "issued_by": "na-contract",
+    "issuer_sovereign_id": "contract-na",
+    "roles": [
+      "role:client"
+    ],
+    "signatures": [
+      {
+        "key_id": "na-contract",
+        "sig": "aaF2mOwHTJ0KK9fehu/xi16oBI0j4eu0W3hGiK9RkCeJv2hOm8wAOypBbedUboazjN4M/KObcA+wlWI0R1d8DA=="
+      }
+    ],
+    "status": "active",
+    "subject_id": "vendor-contract",
+    "subject_public_key": null,
+    "valid_from": "2026-10-05T09:02:32.452474Z"
+  },
+  "boundary_decide": {
+    "agreement_id": "a1be997d-07cf-4ca8-8515-b2889b20b14f",
+    "attestation_binding": null,
+    "authorized": true,
+    "context_id": "be009601-cf25-4733-b238-0a28d7e64f82",
+    "decision_id": "cb8bb4a7-d882-40c5-8d82-e803f09da4f2",
+    "decision_made_at": "2026-10-05T09:02:32.329403Z",
+    "decision_valid_until": "2026-10-05T09:07:32.329403Z",
+    "denial_reason": null,
+    "freshness_proof": null,
+    "gate_results": [
+      {
+        "detail": "capability 'read' is in agreed scope",
+        "gate_name": "capability_check",
+        "passed": true
+      },
+      {
+        "detail": "request at 2026-10-05T09:02:32.329263+00:00 is within [2026-10-05T09:02:32+00:00, 2026-10-06T09:02:32+00:00]",
+        "gate_name": "validity_window",
+        "passed": true
+      },
+      {
+        "detail": "freshness seq 0 >= commitment 0",
+        "gate_name": "freshness_check",
+        "passed": true
+      }
+    ],
+    "operator_sovereign_id": "contract-na",
+    "signature": {
+      "key_id": "na-contract",
+      "sig": "1iFssqE5NMkfVD5s1dLGJjseEG5oWKN/Jeik8SMADBf6LkAMHWUI2CKdtKnfvYcIZDYVQP6jp3pWHQWA0iC9CQ=="
+    }
+  },
+  "boundary_verify": {
+    "accepted": true,
+    "authorized": true,
+    "decision_id": "cb8bb4a7-d882-40c5-8d82-e803f09da4f2",
+    "reason": "authorized"
+  },
+  "consensus_proof": {
+    "cascade_assessment_digest": "e3b104309f8fec479fd9639729e1060a1ae850c93a48f44a8dd56b1f4d31eb88",
+    "consensus_id": "432fccc2-239f-489c-ab18-1d118d102231",
+    "decision_id": "dec-contract-1",
+    "expires_at": "2026-10-05T09:07:32.437585Z",
+    "proof_id": "jp-contract-1",
+    "reached_at": "2026-10-05T09:02:32.437585Z",
+    "required_threshold": 1,
+    "signature": {
+      "key_id": "na-contract",
+      "sig": "NYdWdtBIni5AD0My2Eb/0ixIdhM+AukqudziunAx/oBboEZlst4yKFQLJkd8YEp3Cq49X7dfxfnBaK/7lEtFBQ=="
+    },
+    "validator_sovereign_ids": [
+      "contract-na"
+    ],
+    "votes": [
+      {
+        "context_digest": "ded7fc6fb2bdfc8a1123bf479b92dceb37f7cc55a9140fcb53ecab9726c88abd",
+        "decision_id": "dec-contract-1",
+        "proof_id": "jp-contract-1",
+        "reason": "contract",
+        "signature": {
+          "key_id": "contract-na",
+          "sig": "0JD5UCwPLk3ojRT+qnEGIN86UqfKKcxC5FrtHhmE4Cwqs/mFezFEnhUma5g9XG8B8Pzu2mdygMGyK78O8DI7Aw=="
+        },
+        "validator_sovereign_id": "contract-na",
+        "vote": true,
+        "vote_id": "5f4a8366-944c-4640-a735-d5dd2fdfb890",
+        "voted_at": "2026-10-05T09:02:32.428578Z"
+      }
+    ]
+  },
+  "consensus_verify": {
+    "consensus_id": "432fccc2-239f-489c-ab18-1d118d102231",
+    "reason": "valid",
+    "valid": true
+  },
+  "consensus_vote": {
+    "context_digest": "ded7fc6fb2bdfc8a1123bf479b92dceb37f7cc55a9140fcb53ecab9726c88abd",
+    "decision_id": "dec-contract-1",
+    "proof_id": "jp-contract-1",
+    "reason": "contract",
+    "signature": {
+      "key_id": "contract-na",
+      "sig": "0JD5UCwPLk3ojRT+qnEGIN86UqfKKcxC5FrtHhmE4Cwqs/mFezFEnhUma5g9XG8B8Pzu2mdygMGyK78O8DI7Aw=="
+    },
+    "validator_sovereign_id": "contract-na",
+    "vote": true,
+    "vote_id": "5f4a8366-944c-4640-a735-d5dd2fdfb890",
+    "voted_at": "2026-10-05T09:02:32.428578Z"
+  },
+  "data_usage_intent": {
+    "agent_sovereign_id": "contract-na",
+    "decision_id": "dec-001",
+    "declared_access_types": [
+      "read"
+    ],
+    "declared_at": "2026-10-05T09:02:32.413078Z",
+    "declared_sources": [
+      {
+        "classification_tags": [],
+        "owner_sovereign_id": "contract-na",
+        "source_id": "src-1",
+        "source_type": "database"
+      }
+    ],
+    "estimated_volume_bytes": null,
+    "expires_at": "2026-10-05T09:07:32.413078Z",
+    "intent_id": "a4161891-191c-494d-89e4-0c3b2f817f2e",
+    "signature": {
+      "key_id": "contract-na",
+      "sig": "MDuBX71DKGdpWug4L7UvrKb/O9P72G+VOZu9/ih4iPbZmfRUVRQ8mncp/1oBK9H6GgsmUDteMm6TJWARNXXVAg=="
+    }
+  },
+  "data_usage_policy": {
+    "allowed_access_types": [
+      "read"
+    ],
+    "allowed_source_ids": [
+      "src-1"
+    ],
+    "licensee_sovereign_id": "sovereign-b",
+    "licensor_sovereign_id": "contract-na",
+    "max_volume_bytes_per_session": null,
+    "policy_id": "2a629138-9019-4425-b431-b404f3d06a2e",
+    "prohibited_classification_tags": [],
+    "signature": {
+      "key_id": "na-contract",
+      "sig": "LnliLaWhbXk28oaL45b2IGrUXxgzsUffQPWLn/ANqcnqfqHYttw95XjHtgNDrYH1Dm0Ga8BRoWuJaMNUbprfCg=="
+    },
+    "valid_from": "2026-10-05T09:02:32Z",
+    "valid_until": "2026-11-04T09:02:32Z"
+  },
+  "data_usage_verify": {
+    "valid": true,
+    "violation_count": 0,
+    "violation_reason": null,
+    "violations": []
+  },
+  "disclosure_commit": {
+    "agreement_id": "a1be997d-07cf-4ca8-8515-b2889b20b14f",
+    "capability_count": 2,
+    "commitment_id": "41019e3f-4b48-4f6e-900b-24e28bec6677",
+    "committed_at": "2026-10-05T09:02:32.365973Z",
+    "issuer_sovereign_id": "na-contract",
+    "merkle_root": "c74bdbe92a5f3dc1fbdc94ab2610ec89d78c96376a7a3e2ca936b7f192f6716e",
+    "signature": {
+      "key_id": "na-contract",
+      "sig": "OX/qV8a3MfRWxPrdoyC0KQJcpw9KaNt8prAFZuKJPvWwK/QTyCBccMsGd95iP12iJ6X9lWHaYOtIt5I495gmAw=="
+    }
+  },
+  "disclosure_prove": {
+    "commitment_id": "41019e3f-4b48-4f6e-900b-24e28bec6677",
+    "leaf_hash": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
+    "merkle_path": [
+      {
+        "is_left": false,
+        "sibling_hash": "10fd874b68dad080ed706762c8e163dabb20514bddae38fb159c56f714a3b143"
+      }
+    ],
+    "proof_id": "14cfa023-676e-4f4f-b348-a14a21465952",
+    "proved_at": "2026-10-05T09:02:32.374990Z",
+    "prover_sovereign_id": "sovereign-b",
+    "revealed_capability": "read"
+  },
+  "disclosure_verify": {
+    "commitment_id": "41019e3f-4b48-4f6e-900b-24e28bec6677",
+    "reason": "valid",
+    "valid": true
+  },
+  "evidence_build": {
+    "evaluated_at": "",
+    "evidence_id": "e4a8715d-a2a4-48eb-834a-005ca513382c",
+    "graph_digest": "7c43ffb9f63087425fe679ece20fd1e6e892706c5eed001c708f301e09c383e6",
+    "hop_count": 0,
+    "issued_at": "2026-10-05T09:02:32.351194Z",
+    "issued_by": "na-contract",
+    "issuer_sovereign_id": "contract-na",
+    "metadata": {},
+    "reason": "direct recognition",
+    "requested_roles": [],
+    "signals": [],
+    "signatures": [
+      {
+        "key_id": "na-contract",
+        "sig": "63JO1utiZrisOeLb/VjblzsRvaKDuqYPI3B/iXbJCtQEP69SRPc6W4Z4Yrdd5Ap8ToFSiujcFFFAyZqbqnGPAQ=="
+      }
+    ],
+    "source_sovereign_id": "contract-na",
+    "target_sovereign_id": "sovereign-b",
+    "trusted": false,
+    "verdict": "allow"
+  },
+  "evidence_verify": {
+    "accepted": true,
+    "evidence_id": "e4a8715d-a2a4-48eb-834a-005ca513382c",
+    "issuer_sovereign_id": "contract-na",
+    "reason": "accepted",
+    "verdict": "allow"
+  }
+}

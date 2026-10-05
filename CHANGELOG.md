@@ -7,6 +7,52 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.0.2] - 2026-10-05
+
+Coordinated Genesis Mesh v1.0.2 release: fixes from external testing.
+
+### Changed
+
+- **Admin signatures cover the whole request (signature version 2):** the
+  client signs the HTTP method, path, query parameters and the target NA's
+  public key, read once from `/sovereign.json` or given as
+  `ClientOptions.Audience`. Network Authorities from 1.0.2 accept only version
+  2 by default.
+- **Breaking:** `BuildAdminHeaders` takes an
+  `AdminRequest` (`Method`, `Path`, `Query`, `Audience`, `Body`) instead of a
+  body. New: `AdminSigningPayload`, `BuildAdminHeadersAt`,
+  `AdminSignatureVersion`. Shared conformance vectors:
+  `genesismesh/testdata/conformance/admin_auth.json`.
+
+### Fixed
+
+- **Typed results carry the Network Authority's field names.** Most response
+  types declared names the NA never sends, so their fields were always empty:
+  `Agreement.Verify`, `Boundary.Verify` and `Evidence.Verify` always reported
+  `Valid == false` (the NA answers `accepted`), and `Boundary.Decide` always
+  reported `Allowed == false` (the NA sends `authorized`). The types now model
+  the NA's JSON: `BoundaryDecision.Authorized` and `DenialReason`,
+  `VerifyResult.Accepted` (`Valid` and `Accepted` are both true when the NA
+  accepted, whichever name it used), `AgreementRecord.AgreedTerms`,
+  `TrustEvidence.IssuerSovereignID`, `MembershipAttestation.SubjectID`,
+  `CapabilityMembershipProof.RevealedCapability`,
+  `DataLicensePolicy.LicensorSovereignID`, `DataAccessIntent.DeclaredSources`
+  and the other fields the NA sends. The old names still compile, are
+  deprecated and are filled in from the NA's fields when a response is
+  decoded; marshaling a decoded result gives the NA's fields only.
+- `TrustDecision` has the fields the NA signs into trust evidence: `Trusted`,
+  `HopCount`, `TrustPath`, `RequestedRoles` and `EvaluatedAt`. Evidence built
+  from Go recorded every decision as untrusted with zero hops.
+- `OfferRecord` keeps a counter-offer's `AgreedTerms` and `ResponderEvidence`.
+
+### Tests
+
+- The unit tests answer with the NA's JSON rather than the SDK's own types.
+  `contract_types_test.go` decodes a live NA's response to every call
+  (`genesismesh/testdata/contract/na_responses.json`), and CI runs every
+  method against a live Network Authority (`go test -tags live`, the
+  `live-contract` job) and checks formatting.
+
 ## [1.0.1] - 2026-10-04
 
 Coordinated Genesis Mesh v1.0.1 release: gateway console fixes. No changes in

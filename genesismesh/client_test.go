@@ -18,6 +18,8 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.S
 		BaseURL:    srv.URL,
 		SigningKey: seedB64,
 		KeyID:      "test-key",
+		// Admin signatures name the NA's public key; tests pass a fixed audience.
+		Audience: "TEST",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +85,7 @@ func TestBoundaryClient_Decide(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, BoundaryDecision{DecisionID: "dec-1", Allowed: true})
+		respondJSON(w, map[string]interface{}{"decision_id": "dec-1", "authorized": true})
 	})
 	dec, err := c.Boundary.Decide(context.Background(), map[string]interface{}{
 		"requesting_agent_id": "agent-a",
@@ -92,8 +94,8 @@ func TestBoundaryClient_Decide(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !dec.Allowed {
-		t.Error("expected allowed=true")
+	if !dec.Authorized || !dec.Allowed {
+		t.Errorf("authorized = %v, allowed = %v; want both true", dec.Authorized, dec.Allowed)
 	}
 }
 

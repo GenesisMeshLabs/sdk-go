@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,10 @@ type ClientOptions struct {
 	SigningKey string // base64-encoded 32-byte Ed25519 seed (required for admin routes)
 	KeyID      string // identifies the signing key in signatures
 	Timeout    time.Duration
+	// Audience is the NA's public key, which admin signatures name (signature
+	// version 2). When empty it is read once from the NA's /sovereign.json
+	// (network_authority.public_key).
+	Audience string
 }
 
 // transport handles HTTP communication with the NA.
@@ -25,6 +30,9 @@ type transport struct {
 	httpClient *http.Client
 	privateKey ed25519.PrivateKey
 	keyID      string
+
+	audienceMu sync.Mutex
+	audience   string
 }
 
 func newTransport(opts ClientOptions) (*transport, error) {
@@ -36,6 +44,7 @@ func newTransport(opts ClientOptions) (*transport, error) {
 		baseURL:    opts.BaseURL,
 		httpClient: &http.Client{Timeout: timeout},
 		keyID:      opts.KeyID,
+		audience:   opts.Audience,
 	}
 	if opts.SigningKey != "" {
 		priv, _, err := LoadPrivateKey(opts.SigningKey)
@@ -51,7 +60,13 @@ func (t *transport) adminPost(ctx context.Context, path string, body interface{}
 	if t.privateKey == nil {
 		return fmt.Errorf("genesismesh: signing key required for admin route %s", path)
 	}
-	headers, err := BuildAdminHeaders(body, t.keyID, t.privateKey)
+	audience, err := t.adminAudience(ctx)
+	if err != nil {
+		return err
+	}
+	headers, err := BuildAdminHeaders(AdminRequest{
+		Method: http.MethodPost, Path: path, Audience: audience, Body: body,
+	}, t.keyID, t.privateKey)
 	if err != nil {
 		return err
 	}
@@ -61,6 +76,29 @@ func (t *transport) adminPost(ctx context.Context, path string, body interface{}
 		"X-Admin-Timestamp": headers.Timestamp,
 		"X-Admin-Nonce":     headers.Nonce,
 	}, out)
+}
+
+// adminAudience returns the NA's public key for admin signatures, read once
+// from /sovereign.json; a failed lookup is retried by the next request.
+func (t *transport) adminAudience(ctx context.Context) (string, error) {
+	t.audienceMu.Lock()
+	defer t.audienceMu.Unlock()
+	if t.audience != "" {
+		return t.audience, nil
+	}
+	var meta struct {
+		NetworkAuthority struct {
+			PublicKey string `json:"public_key"`
+		} `json:"network_authority"`
+	}
+	if err := t.do(ctx, http.MethodGet, "/sovereign.json", nil, nil, &meta); err != nil {
+		return "", fmt.Errorf("genesismesh: read NA public key from /sovereign.json: %w", err)
+	}
+	if meta.NetworkAuthority.PublicKey == "" {
+		return "", fmt.Errorf("genesismesh: /sovereign.json has no network_authority.public_key")
+	}
+	t.audience = meta.NetworkAuthority.PublicKey
+	return t.audience, nil
 }
 
 func (t *transport) publicPost(ctx context.Context, path string, body interface{}, out interface{}) error {
