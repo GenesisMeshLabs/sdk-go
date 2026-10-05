@@ -13,11 +13,10 @@ func TestBoundaryClient_Decide_HappyPath(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, BoundaryDecision{
-			DecisionID:        "dec-1",
-			Allowed:           true,
-			Reason:            "policy matched",
-			RequestingAgentID: "agent-a",
+		respondJSON(w, map[string]interface{}{
+			"decision_id":   "dec-1",
+			"authorized":    true,
+			"denial_reason": nil,
 		})
 	})
 	dec, err := c.Boundary.Decide(context.Background(), map[string]interface{}{
@@ -32,8 +31,8 @@ func TestBoundaryClient_Decide_HappyPath(t *testing.T) {
 	if dec.DecisionID != "dec-1" {
 		t.Errorf("decision_id = %q, want dec-1", dec.DecisionID)
 	}
-	if !dec.Allowed {
-		t.Error("expected allowed=true")
+	if !dec.Authorized || !dec.Allowed {
+		t.Errorf("authorized = %v, allowed = %v; want both true", dec.Authorized, dec.Allowed)
 	}
 }
 
@@ -41,7 +40,7 @@ func TestBoundaryClient_Decide_AdminHeaderPresent(t *testing.T) {
 	var gotKeyID string
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotKeyID = r.Header.Get("X-Admin-Key-Id")
-		respondJSON(w, BoundaryDecision{DecisionID: "dec-hdr", Allowed: false})
+		respondJSON(w, map[string]interface{}{"decision_id": "dec-hdr", "authorized": false})
 	})
 	_, err := c.Boundary.Decide(context.Background(), map[string]interface{}{
 		"requesting_agent_id": "agent-x",
@@ -57,7 +56,11 @@ func TestBoundaryClient_Decide_AdminHeaderPresent(t *testing.T) {
 
 func TestBoundaryClient_Decide_AllowedFalseDeserializes(t *testing.T) {
 	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		respondJSON(w, BoundaryDecision{DecisionID: "dec-deny", Allowed: false, Reason: "no agreement"})
+		respondJSON(w, map[string]interface{}{
+			"decision_id":   "dec-deny",
+			"authorized":    false,
+			"denial_reason": "no agreement",
+		})
 	})
 	dec, err := c.Boundary.Decide(context.Background(), map[string]interface{}{
 		"requesting_agent_id": "agent-z",
@@ -66,11 +69,11 @@ func TestBoundaryClient_Decide_AllowedFalseDeserializes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dec.Allowed {
-		t.Error("expected allowed=false")
+	if dec.Authorized || dec.Allowed {
+		t.Error("expected authorized=false")
 	}
-	if dec.Reason != "no agreement" {
-		t.Errorf("reason = %q, want 'no agreement'", dec.Reason)
+	if dec.DenialReason == nil || *dec.DenialReason != "no agreement" || dec.Reason != "no agreement" {
+		t.Errorf("denial_reason = %v, reason = %q, want 'no agreement'", dec.DenialReason, dec.Reason)
 	}
 }
 

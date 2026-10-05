@@ -56,7 +56,7 @@ func TestDisclosureClient_Nullifier_HappyPath(t *testing.T) {
 			return
 		}
 		respondJSON(w, map[string]interface{}{
-			"nullifier_id": "null-1",
+			"nullifier_id":  "null-1",
 			"commitment_id": "commit-1",
 		})
 	})
@@ -78,10 +78,10 @@ func TestDisclosureClient_Prove_PublicRouteNoSigningKey(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		respondJSON(w, CapabilityMembershipProof{
-			CommitmentID: "commit-1",
-			Capability:   "read",
-			LeafHash:     "deadbeef",
+		respondJSON(w, map[string]interface{}{
+			"commitment_id":       "commit-1",
+			"revealed_capability": "read",
+			"leaf_hash":           "deadbeef",
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -99,8 +99,8 @@ func TestDisclosureClient_Prove_PublicRouteNoSigningKey(t *testing.T) {
 	if proof.CommitmentID != "commit-1" {
 		t.Errorf("commitment_id = %q, want commit-1", proof.CommitmentID)
 	}
-	if proof.Capability != "read" {
-		t.Errorf("capability = %q, want read", proof.Capability)
+	if proof.RevealedCapability != "read" || proof.Capability != "read" {
+		t.Errorf("revealed_capability = %q, capability = %q, want read", proof.RevealedCapability, proof.Capability)
 	}
 }
 

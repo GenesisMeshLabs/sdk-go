@@ -68,7 +68,9 @@ func TestLoadPrivateKey_WrongLength(t *testing.T) {
 func TestBuildAdminHeaders(t *testing.T) {
 	seed := make([]byte, ed25519.SeedSize)
 	priv := ed25519.NewKeyFromSeed(seed)
-	headers, err := BuildAdminHeaders(map[string]string{"foo": "bar"}, "test-key", priv)
+	headers, err := BuildAdminHeaders(AdminRequest{
+		Method: "POST", Path: "/admin/invite", Audience: "TEST", Body: map[string]string{"foo": "bar"},
+	}, "test-key", priv)
 	if err != nil {
 		t.Fatal(err)
 	}

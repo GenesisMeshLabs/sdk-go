@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -48,20 +49,61 @@ type AdminHeaders struct {
 	Nonce     string
 }
 
-// BuildAdminHeaders computes the four X-Admin-* headers for an admin request.
-// body must be JSON-serialisable. The signature covers
-// canonicalJSON({body, key_id, nonce, timestamp}).
-func BuildAdminHeaders(body interface{}, keyID string, privateKey ed25519.PrivateKey) (AdminHeaders, error) {
-	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000") + "Z"
-	nonce := uuid.New().String()
+// AdminSignatureVersion is the admin signature format this SDK produces
+// (Genesis Mesh 1.0.2).
+const AdminSignatureVersion = 2
 
-	payload := map[string]interface{}{
+// AdminRequest is what an admin signature binds (signature version 2): the
+// HTTP method, the path the NA serves (decoded, without the query string),
+// the query parameters as sent, the target NA's public key
+// (network_authority.public_key in its /sovereign.json) and the JSON body
+// (nil signs {}).
+type AdminRequest struct {
+	Method   string
+	Path     string
+	Query    map[string][]string
+	Audience string
+	Body     interface{}
+}
+
+// AdminSigningPayload returns the canonical bytes an operator signs for req.
+func AdminSigningPayload(req AdminRequest, keyID, timestamp, nonce string) ([]byte, error) {
+	// A decoded path may itself contain '?' (from %3F); query parameters go in Query.
+	if !strings.HasPrefix(req.Path, "/") {
+		return nil, fmt.Errorf("genesismesh: admin request path must start with /")
+	}
+	body := req.Body
+	if body == nil {
+		body = map[string]interface{}{}
+	}
+	query := map[string][]string{}
+	for name, values := range req.Query {
+		query[name] = append([]string{}, values...)
+	}
+	return canonicalJSON(map[string]interface{}{
+		"v":         AdminSignatureVersion,
+		"method":    strings.ToUpper(req.Method),
+		"path":      req.Path,
+		"query":     query,
+		"audience":  req.Audience,
 		"body":      body,
 		"key_id":    keyID,
-		"nonce":     nonce,
 		"timestamp": timestamp,
-	}
-	canonical, err := canonicalJSON(payload)
+		"nonce":     nonce,
+	})
+}
+
+// BuildAdminHeaders computes the four X-Admin-* headers for one admin request
+// (signature version 2).
+func BuildAdminHeaders(req AdminRequest, keyID string, privateKey ed25519.PrivateKey) (AdminHeaders, error) {
+	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000") + "Z"
+	return BuildAdminHeadersAt(req, keyID, privateKey, timestamp, uuid.New().String())
+}
+
+// BuildAdminHeadersAt is BuildAdminHeaders with a fixed timestamp and nonce,
+// for reproducing a signature (tests and conformance vectors).
+func BuildAdminHeadersAt(req AdminRequest, keyID string, privateKey ed25519.PrivateKey, timestamp, nonce string) (AdminHeaders, error) {
+	canonical, err := AdminSigningPayload(req, keyID, timestamp, nonce)
 	if err != nil {
 		return AdminHeaders{}, fmt.Errorf("genesismesh: canonical JSON failed: %w", err)
 	}

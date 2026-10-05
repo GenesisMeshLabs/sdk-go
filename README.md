@@ -251,7 +251,11 @@ body := map[string]interface{}{
     "validity_hours":        24,
 }
 
-headers, err := genesismesh.BuildAdminHeaders(body, "operator-local", priv)
+headers, err := genesismesh.BuildAdminHeaders(genesismesh.AdminRequest{
+    Method: "POST", Path: "/admin/recognition-treaties",
+    Audience: "<NA public key>", // network_authority.public_key from the NA's /sovereign.json
+    Body: body,
+}, "operator-local", priv)
 
 b, _ := json.Marshal(body)
 req, _ := http.NewRequest("POST", baseURL+"/admin/recognition-treaties", bytes.NewReader(b))
@@ -297,9 +301,16 @@ Admin routes are authenticated with four HTTP headers built from an Ed25519 oper
 | Header | Description |
 |---|---|
 | `X-Admin-Key-Id` | Key identifier registered with the NA |
-| `X-Admin-Signature` | Ed25519 signature over `canonicalJSON({body, key_id, nonce, timestamp})` |
+| `X-Admin-Signature` | Ed25519 over the canonical admin payload: `{v: 2, method, path, query, audience, body, key_id, timestamp, nonce}` |
 | `X-Admin-Timestamp` | ISO 8601 UTC timestamp (must be within NA's nonce window) |
 | `X-Admin-Nonce` | UUID v4 replay-protection token (single use) |
+
+Signature version 2 (1.0.2) binds each signature to the HTTP method, the request
+path, the query parameters and the target NA's public key (`Audience`). The
+client reads it (`network_authority.public_key`) once from the NA's public
+`/sovereign.json`, or
+uses `ClientOptions.Audience`. `AdminSigningPayload` returns the signed bytes.
+
 
 The SDK handles all of this automatically when `SigningKey` is provided.
 
