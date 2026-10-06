@@ -2,10 +2,15 @@
 
 ## Supported versions
 
+Only the latest minor release of the 1.x line receives security fixes, as
+for the Genesis Mesh core it is released with. Releases before 1.0.0 are
+unsupported.
+
 | Version | Supported |
 |---------|-----------|
-| 0.56.x  | Yes       |
-| < 0.56  | No        |
+| Latest 1.x minor | Yes |
+| Older 1.x minors | No: upgrade |
+| < 1.0 | No |
 
 ## Scope
 
