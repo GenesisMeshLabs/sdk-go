@@ -48,7 +48,7 @@ func main() {
 To develop against a governed Network Authority on your machine (policies
 required, a privileged key for setup and a standard key for your controller),
 see [Develop Against a Local Network Authority](https://docs.genesismesh.org/sdk/local-network-authority.html).
-It needs `genesis-mesh` 1.2.0 or later from PyPI.
+It needs `genesis-mesh` 1.1.0 or later from PyPI.
 
 ## Sub-clients
 
