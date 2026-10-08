@@ -7,6 +7,19 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.1.0] - 2026-10-08
+
+Coordinated Genesis Mesh v1.1.0 release: signed container images and a local
+governed Network Authority. No API change in this SDK.
+
+### Changed
+
+- The README links *Develop Against a Local Network Authority*: a governed
+  Network Authority on a developer's machine, with a privileged setup key and
+  a standard controller key (`genesis-mesh` 1.1.0).
+- CI pins its actions to commits and runs with a read-only token; the
+  security policy follows the core.
+
 ## [1.0.2] - 2026-10-05
 
 Coordinated Genesis Mesh v1.0.2 release: fixes from external testing.
