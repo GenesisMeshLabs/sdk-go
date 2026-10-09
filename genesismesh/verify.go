@@ -236,6 +236,10 @@ func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, 
 	if hasUnknownFields("AgreementRecord", obj) {
 		return result(false, "unknown_field"), nil
 	}
+	// v1.2.0: an agreement signed over a form the reference does not write.
+	if len(nonCanonicalTimestamps("AgreementRecord", obj)) > 0 {
+		return result(false, "non_canonical_form"), nil
+	}
 	return result(true, "accepted"), nil
 }
 
@@ -318,6 +322,10 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		if a, err := decodeObject(opts.ExpectedAttestation, "expected attestation"); err == nil && hasUnknownFields("MembershipAttestation", a) {
 			return reject("unknown_field")
 		}
+	}
+	// v1.2.0: a decision signed over a form the reference does not write.
+	if len(nonCanonicalTimestamps("BoundaryDecision", d)) > 0 {
+		return reject("non_canonical_form")
 	}
 
 	if proof, ok := d["freshness_proof"].(map[string]interface{}); ok && len(opts.FreshnessProofIssuerKeys) > 0 {
@@ -477,7 +485,7 @@ func VerifyDataLicensePolicySignature(policyJSON []byte, licensorKeys []string) 
 	if err != nil {
 		return false, err
 	}
-	if hasUnknownFields("DataLicensePolicy", p) {
+	if hasUnknownFields("DataLicensePolicy", p) || len(nonCanonicalTimestamps("DataLicensePolicy", p)) > 0 {
 		return false, nil
 	}
 	return verifyEd25519(c, sig, licensorKeys), nil
@@ -533,9 +541,11 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	fail := func(violations []DataUsageViolation) DataIntentVerification {
 		return DataIntentVerification{Valid: false, ViolationReason: violations[0].ViolationType, Violations: violations}
 	}
-	// v1.2.0: fields this SDK does not know, as the reference reports them (strict.go).
+	// v1.2.0: fields this SDK does not know, and forms the reference does not
+	// write, as the reference reports them (strict.go).
 	intentUnknown := unknownFieldsIn("DataAccessIntent", intent, "", true)
-	if len(intentUnknown) > 0 {
+	intentLoose := nonCanonicalTimestamps("DataAccessIntent", intent)
+	if len(intentUnknown) > 0 || len(intentLoose) > 0 {
 		s, has := signatureOf(intent, "signature")
 		c, err := canonicalOf(without(intent, []string{"signature"}))
 		if err != nil {
@@ -549,6 +559,12 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
 		return fail([]DataUsageViolation{{"intent_exceeds_license", "Unknown field: " + strings.Join(unknown, ", ")}}), nil
+	}
+	if len(intentLoose) > 0 {
+		return fail([]DataUsageViolation{{"intent_exceeds_license", "Not in canonical form: intent"}}), nil
+	}
+	if len(nonCanonicalTimestamps("DataLicensePolicy", policy)) > 0 {
+		return fail([]DataUsageViolation{{"intent_exceeds_license", "Not in canonical form: policy"}}), nil
 	}
 	sig, ok := signatureOf(intent, "signature")
 	if !ok {

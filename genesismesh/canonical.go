@@ -29,8 +29,12 @@ func CanonicalJSON(raw []byte) (string, error) {
 }
 
 // decodeJSON parses JSON keeping number literals (json.Number), so canonical
-// forms of received artifacts are reproduced exactly.
+// forms of received artifacts are reproduced exactly. v1.2.0: JSON every
+// implementation would not read alike is refused (*StrictJSONError).
 func decodeJSON(raw []byte) (interface{}, error) {
+	if err := CheckStrictJSON(raw); err != nil {
+		return nil, err
+	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
 	var v interface{}
