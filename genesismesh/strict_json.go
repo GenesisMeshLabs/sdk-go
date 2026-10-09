@@ -34,7 +34,9 @@ var (
 	maxInteger = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 64), big.NewInt(1))
 )
 
-const maxStrictDepth = 10000
+// MaxStrictDepth is how deep arrays and objects may nest; deeper is refused
+// as invalid_json, as in every implementation.
+const MaxStrictDepth = 64
 
 type strictScanner struct {
 	text  []byte
@@ -224,8 +226,8 @@ func (s *strictScanner) value() error {
 	s.space()
 	switch c := s.peek(); {
 	case c == '{':
-		if s.depth++; s.depth > maxStrictDepth {
-			return refuse("invalid_json", "nested too deeply")
+		if s.depth++; s.depth > MaxStrictDepth {
+			return refuse("invalid_json", fmt.Sprintf("arrays or objects nested more than %d deep", MaxStrictDepth))
 		}
 		s.at++
 		s.space()
@@ -269,8 +271,8 @@ func (s *strictScanner) value() error {
 			}
 		}
 	case c == '[':
-		if s.depth++; s.depth > maxStrictDepth {
-			return refuse("invalid_json", "nested too deeply")
+		if s.depth++; s.depth > MaxStrictDepth {
+			return refuse("invalid_json", fmt.Sprintf("arrays or objects nested more than %d deep", MaxStrictDepth))
 		}
 		s.at++
 		s.space()
