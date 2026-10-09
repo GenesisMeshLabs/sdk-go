@@ -1,18 +1,19 @@
 package genesismesh
 
-// Strict verification (v1.2.0): every field of a signed record is known.
+// Strict verification (v1.2.0): every signed field of a record is known.
 //
-// A verifier that copies every received field into the signed form accepts a
-// field it does not understand whenever the signer covered it, so a field
-// added in a later release could change what a record means. The registry
-// (canonical_registry.json, generated from the Python reference and shipped
-// in the shared conformance suite "canonical") lists every field of every
-// record this SDK verifies; anything else is refused as "unknown_field". See
-// the core's reference page "Canonical Form of Signed Records".
+// Before 1.2.0 this package copied every received field into the signed form,
+// so a field a newer signer covered verified here and could change what a
+// record means. The registry (canonical_registry.json, generated from the
+// Python reference and shipped in the shared conformance suite
+// "field_registry") lists every field of every record this package verifies.
+// Verifiers check the signature over the record as received first; a signed
+// field the registry does not list is then refused as "unknown_field". See the
+// core's reference page "Canonical Form of Signed Records".
 //
-// After copying a new suite to testdata/conformance/canonical.json, write its
-// "registry" member to canonical_registry.json; the conformance test fails
-// while the two differ.
+// After copying a new suite to testdata/conformance/field_registry.json, run
+// `python scripts/sync_canonical_registry.py`; the conformance test fails
+// while the embedded registry differs from the suite.
 
 import (
 	_ "embed"
@@ -27,13 +28,15 @@ var canonicalRegistryJSON []byte
 var canonicalRegistry = mustLoadRegistry(canonicalRegistryJSON)
 
 type registryDoc struct {
-	Version    int                          `json:"version"`
-	EntryKinds []string                     `json:"entry_kinds"`
-	Models     map[string]registryModelSpec `json:"models"`
+	Version int                          `json:"version"`
+	Models  map[string]registryModelSpec `json:"models"`
 }
 
 type registryModelSpec struct {
-	Fields map[string]interface{} `json:"fields"`
+	Fields          map[string]interface{} `json:"fields"`
+	SignatureField  string                 `json:"signature_field"`
+	OmitWhenNone    []string               `json:"omit_when_none"`
+	CanonicalFields []string               `json:"canonical_fields"`
 }
 
 func mustLoadRegistry(raw []byte) registryDoc {
@@ -44,36 +47,37 @@ func mustLoadRegistry(raw []byte) registryDoc {
 	return doc
 }
 
-// CanonicalRegistryJSON returns the embedded field registry of signed records.
-func CanonicalRegistryJSON() []byte {
-	return append([]byte(nil), canonicalRegistryJSON...)
-}
-
-// UnknownFields returns the dotted paths, sorted, of the fields in recordJSON
-// that model does not define, at any depth ("policy_binding.policies.0.extra").
-// Free-form fields are not inspected; values of the wrong type are left to
-// validation.
+// UnknownFields returns the dotted paths, sorted, of the signed fields in
+// recordJSON that model does not define, at any depth
+// ("policy_binding.policies.0.extra"). Only the signed projection is checked
+// (not the signature, not an agreement's unsigned fields); free-form fields are
+// not inspected; values of the wrong type are left to validation.
 func UnknownFields(model string, recordJSON []byte) ([]string, error) {
 	v, err := decodeJSON(recordJSON)
 	if err != nil {
 		return nil, fmt.Errorf("genesismesh: record is not valid JSON: %w", err)
 	}
-	found := unknownFieldsIn(model, v, "")
+	found := unknownFieldsIn(model, v, "", true)
 	sort.Strings(found)
 	return found, nil
 }
 
-// IsKnownEntryKind reports whether this SDK knows the evidence entry kind.
-func IsKnownEntryKind(kind string) bool {
-	for _, k := range canonicalRegistry.EntryKinds {
-		if k == kind {
-			return true
+func outsideProjection(spec registryModelSpec, key string) bool {
+	if key == spec.SignatureField {
+		return true
+	}
+	if spec.CanonicalFields == nil {
+		return false
+	}
+	for _, f := range spec.CanonicalFields {
+		if f == key {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-func unknownFieldsIn(model string, data interface{}, path string) []string {
+func unknownFieldsIn(model string, data interface{}, path string, projection bool) []string {
 	spec, ok := canonicalRegistry.Models[model]
 	record, isObject := data.(map[string]interface{})
 	if !ok || !isObject {
@@ -81,6 +85,9 @@ func unknownFieldsIn(model string, data interface{}, path string) []string {
 	}
 	var found []string
 	for key, value := range record {
+		if projection && outsideProjection(spec, key) {
+			continue
+		}
 		kind, known := spec.Fields[key]
 		if !known {
 			found = append(found, path+key)
@@ -91,17 +98,17 @@ func unknownFieldsIn(model string, data interface{}, path string) []string {
 			continue
 		}
 		if m, ok := nested["object"].(string); ok {
-			found = append(found, unknownFieldsIn(m, value, path+key+".")...)
+			found = append(found, unknownFieldsIn(m, value, path+key+".", false)...)
 		} else if m, ok := nested["list"].(string); ok {
 			if items, ok := value.([]interface{}); ok {
 				for i, item := range items {
-					found = append(found, unknownFieldsIn(m, item, fmt.Sprintf("%s%s.%d.", path, key, i))...)
+					found = append(found, unknownFieldsIn(m, item, fmt.Sprintf("%s%s.%d.", path, key, i), false)...)
 				}
 			}
 		} else if m, ok := nested["map"].(string); ok {
 			if items, ok := value.(map[string]interface{}); ok {
 				for k, item := range items {
-					found = append(found, unknownFieldsIn(m, item, path+key+"."+k+".")...)
+					found = append(found, unknownFieldsIn(m, item, path+key+"."+k+".", false)...)
 				}
 			}
 		}
@@ -109,7 +116,7 @@ func unknownFieldsIn(model string, data interface{}, path string) []string {
 	return found
 }
 
-// hasUnknownFields reports whether a decoded record carries a field model does not define.
+// hasUnknownFields reports whether a decoded record carries a signed field model does not define.
 func hasUnknownFields(model string, record object) bool {
-	return len(unknownFieldsIn(model, record, "")) > 0
+	return len(unknownFieldsIn(model, record, "", true)) > 0
 }
