@@ -7,6 +7,20 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.1.1] - 2026-10-09
+
+Coordinated Genesis Mesh v1.1.1 release: security fixes in the Network
+Authority. No API change in this SDK.
+
+### Changed
+
+- A 1.1.1 Network Authority decides under an agreement only if two parties it
+  recognises signed it, binds the requester and provider to the agreement's
+  parties, needs a privileged key to counter an offer, and admits execution
+  evidence only in its exact signed form with UTC timestamps. Requests this
+  SDK builds are unchanged; see *Upgrading to 1.1.1* in the core upgrade
+  guide.
+
 ## [1.1.0] - 2026-10-08
 
 Coordinated Genesis Mesh v1.1.0 release: signed container images and a local
