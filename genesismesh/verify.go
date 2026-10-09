@@ -197,6 +197,10 @@ func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, 
 	result := func(accepted bool, reason string) AgreementVerification {
 		return AgreementVerification{Accepted: accepted, Reason: reason, AgreementID: str(obj, "agreement_id")}
 	}
+	// v1.2.0: a field this SDK does not know is refused by name (strict.go).
+	if hasUnknownFields("AgreementRecord", obj) {
+		return result(false, "unknown_field"), nil
+	}
 	sigs := signaturesOf(obj)
 	if len(sigs) == 0 {
 		return result(false, "missing_offerer_signature"), nil
@@ -270,6 +274,21 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		return DecisionVerification{Accepted: accepted, Reason: reason, Authorized: auth, DecisionID: str(d, "decision_id")}
 	}
 	reject := func(reason string) (DecisionVerification, error) { return result(false, reason, authorized), nil }
+
+	// v1.2.0: a field this SDK does not know is refused by name (strict.go).
+	if hasUnknownFields("BoundaryDecision", d) {
+		return reject("unknown_field")
+	}
+	for _, raw := range opts.ExpectedPolicies {
+		if p, err := decodeObject(raw, "expected policy"); err == nil && hasUnknownFields("BoundaryPolicy", p) {
+			return reject("unknown_field")
+		}
+	}
+	if opts.ExpectedAttestation != nil {
+		if a, err := decodeObject(opts.ExpectedAttestation, "expected attestation"); err == nil && hasUnknownFields("MembershipAttestation", a) {
+			return reject("unknown_field")
+		}
+	}
 
 	sig, ok := signatureOf(d, "signature")
 	if !ok {
@@ -443,6 +462,9 @@ func VerifyDataLicensePolicySignature(policyJSON []byte, licensorKeys []string) 
 	if err != nil {
 		return false, err
 	}
+	if hasUnknownFields("DataLicensePolicy", p) {
+		return false, nil
+	}
 	sig, ok := signatureOf(p, "signature")
 	if !ok {
 		return false, nil
@@ -503,6 +525,11 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	}
 	fail := func(violations []DataUsageViolation) DataIntentVerification {
 		return DataIntentVerification{Valid: false, ViolationReason: violations[0].ViolationType, Violations: violations}
+	}
+	unknown := append(unknownFieldsIn("DataAccessIntent", intent, ""), unknownFieldsIn("DataLicensePolicy", policy, "policy.")...)
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return fail([]DataUsageViolation{{"intent_exceeds_license", "Unknown field: " + strings.Join(unknown, ", ")}}), nil
 	}
 	sig, ok := signatureOf(intent, "signature")
 	if !ok {
