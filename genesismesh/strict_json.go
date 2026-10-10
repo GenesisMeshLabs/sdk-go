@@ -315,6 +315,11 @@ func (s *strictScanner) value() error {
 // CheckStrictJSON returns a *StrictJSONError unless raw is JSON every
 // implementation reads alike (v1.2.0).
 func CheckStrictJSON(raw []byte) error {
+	// v1.3.0: text that is not UTF-8 is refused before any other fault, as every
+	// implementation that decodes the text first refuses it.
+	if !utf8.Valid(raw) {
+		return refuse("invalid_json", "text that is not UTF-8")
+	}
 	s := &strictScanner{text: raw}
 	if err := s.value(); err != nil {
 		return err

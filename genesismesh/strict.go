@@ -38,10 +38,11 @@ type registryDoc struct {
 }
 
 type registryModelSpec struct {
-	Fields          map[string]interface{} `json:"fields"`
-	SignatureField  string                 `json:"signature_field"`
-	OmitWhenNone    []string               `json:"omit_when_none"`
-	CanonicalFields []string               `json:"canonical_fields"`
+	Fields map[string]interface{} `json:"fields"`
+	// A pointer, so a model without a signature field is not read as one named "".
+	SignatureField  *string  `json:"signature_field"`
+	OmitWhenNone    []string `json:"omit_when_none"`
+	CanonicalFields []string `json:"canonical_fields"`
 }
 
 func mustLoadRegistry(raw []byte) registryDoc {
@@ -68,7 +69,7 @@ func UnknownFields(model string, recordJSON []byte) ([]string, error) {
 }
 
 func outsideProjection(spec registryModelSpec, key string) bool {
-	if key == spec.SignatureField {
+	if spec.SignatureField != nil && key == *spec.SignatureField {
 		return true
 	}
 	if spec.CanonicalFields == nil {
@@ -202,4 +203,68 @@ func nonCanonicalTimestamps(model string, record interface{}) []string {
 	walk(model, record, "", true)
 	sort.Strings(found)
 	return found
+}
+
+// nonCanonicalFields returns the dotted paths, sorted, where record's signed
+// projection differs from the form the reference writes (v1.3.0): timestamps
+// not in canonical form, and a field the reference always writes left out (a
+// field it leaves out when absent reads the same whether absent or null). A
+// record signed over such a form is refused as "non_canonical_form", as the
+// reference refuses it.
+func nonCanonicalFields(model string, record interface{}) []string {
+	found := nonCanonicalTimestamps(model, record)
+	var walk func(name string, data interface{}, prefix string, projection bool)
+	walk = func(name string, data interface{}, prefix string, projection bool) {
+		spec, ok := canonicalRegistry.Models[name]
+		obj, isObject := data.(map[string]interface{})
+		if !ok || !isObject {
+			return
+		}
+		omitted := map[string]bool{}
+		for _, f := range spec.OmitWhenNone {
+			omitted[f] = true
+		}
+		for key, kind := range spec.Fields {
+			if projection && outsideProjection(spec, key) {
+				continue
+			}
+			value, present := obj[key]
+			if !present {
+				if !omitted[key] {
+					found = append(found, prefix+key)
+				}
+				continue
+			}
+			nested, structured := kind.(map[string]interface{})
+			if value == nil || !structured {
+				continue
+			}
+			if m, ok := nested["object"].(string); ok {
+				walk(m, value, prefix+key+".", false)
+			} else if m, ok := nested["list"].(string); ok {
+				if items, ok := value.([]interface{}); ok {
+					for i, item := range items {
+						walk(m, item, fmt.Sprintf("%s%s.%d.", prefix, key, i), false)
+					}
+				}
+			} else if m, ok := nested["map"].(string); ok {
+				if items, ok := value.(map[string]interface{}); ok {
+					for k, item := range items {
+						walk(m, item, prefix+key+"."+k+".", false)
+					}
+				}
+			}
+		}
+	}
+	walk(model, record, "", true)
+	seen := map[string]bool{}
+	unique := found[:0]
+	for _, f := range found {
+		if !seen[f] {
+			seen[f] = true
+			unique = append(unique, f)
+		}
+	}
+	sort.Strings(unique)
+	return unique
 }
