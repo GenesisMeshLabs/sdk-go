@@ -237,7 +237,7 @@ func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, 
 		return result(false, "unknown_field"), nil
 	}
 	// v1.2.0: an agreement signed over a form the reference does not write.
-	if len(nonCanonicalTimestamps("AgreementRecord", obj)) > 0 {
+	if len(nonCanonicalFields("AgreementRecord", obj)) > 0 {
 		return result(false, "non_canonical_form"), nil
 	}
 	return result(true, "accepted"), nil
@@ -324,7 +324,7 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		}
 	}
 	// v1.2.0: a decision signed over a form the reference does not write.
-	if len(nonCanonicalTimestamps("BoundaryDecision", d)) > 0 {
+	if len(nonCanonicalFields("BoundaryDecision", d)) > 0 {
 		return reject("non_canonical_form")
 	}
 
@@ -485,7 +485,7 @@ func VerifyDataLicensePolicySignature(policyJSON []byte, licensorKeys []string) 
 	if err != nil {
 		return false, err
 	}
-	if hasUnknownFields("DataLicensePolicy", p) || len(nonCanonicalTimestamps("DataLicensePolicy", p)) > 0 {
+	if hasUnknownFields("DataLicensePolicy", p) || len(nonCanonicalFields("DataLicensePolicy", p)) > 0 {
 		return false, nil
 	}
 	return verifyEd25519(c, sig, licensorKeys), nil
@@ -544,7 +544,7 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	// v1.2.0: fields this SDK does not know, and forms the reference does not
 	// write, as the reference reports them (strict.go).
 	intentUnknown := unknownFieldsIn("DataAccessIntent", intent, "", true)
-	intentLoose := nonCanonicalTimestamps("DataAccessIntent", intent)
+	intentLoose := nonCanonicalFields("DataAccessIntent", intent)
 	if len(intentUnknown) > 0 || len(intentLoose) > 0 {
 		s, has := signatureOf(intent, "signature")
 		c, err := canonicalOf(without(intent, []string{"signature"}))
@@ -563,7 +563,7 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	if len(intentLoose) > 0 {
 		return fail([]DataUsageViolation{{"intent_exceeds_license", "Not in canonical form: intent"}}), nil
 	}
-	if len(nonCanonicalTimestamps("DataLicensePolicy", policy)) > 0 {
+	if len(nonCanonicalFields("DataLicensePolicy", policy)) > 0 {
 		return fail([]DataUsageViolation{{"intent_exceeds_license", "Not in canonical form: policy"}}), nil
 	}
 	sig, ok := signatureOf(intent, "signature")

@@ -2,6 +2,7 @@ package genesismesh
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"reflect"
 	"sort"
@@ -198,5 +199,25 @@ func TestAFieldOutsideTheSignatureFailsTheSignature(t *testing.T) {
 		strings_(t, in.Input["agent_public_keys"]), at)
 	if err != nil || policy.Valid || len(policy.Violations) != 1 || policy.Violations[0].Detail != "Unknown field: policy.x" {
 		t.Fatalf("intent against a policy with an unknown field: %+v %v", policy, err)
+	}
+}
+
+func TestAnEmptyKeyIsAnUnknownField(t *testing.T) {
+	// v1.3.0: a model without a signature field does not read "" as one.
+	found, err := UnknownFields("ContextRecord", []byte(`{"":1,"zz":2}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(found, []string{"", "zz"}) {
+		t.Fatalf("got %v", found)
+	}
+}
+
+func TestTextThatIsNotUTF8IsRefusedFirst(t *testing.T) {
+	// v1.3.0: as every implementation that decodes the text first.
+	err := CheckStrictJSON([]byte("[-0,\"\xff\"]"))
+	var strict *StrictJSONError
+	if !errors.As(err, &strict) || strict.Reason != "invalid_json" {
+		t.Fatalf("got %v", err)
 	}
 }
