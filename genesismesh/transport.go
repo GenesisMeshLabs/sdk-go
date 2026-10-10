@@ -146,6 +146,10 @@ func (t *transport) do(ctx context.Context, method, path string, body interface{
 	}
 
 	if out != nil {
+		// v1.2.0: refuse JSON every implementation would not read alike.
+		if err := CheckStrictJSON(raw); err != nil {
+			return fmt.Errorf("genesismesh: decode response: %w", err)
+		}
 		if err := json.Unmarshal(raw, out); err != nil {
 			return fmt.Errorf("genesismesh: decode response: %w", err)
 		}

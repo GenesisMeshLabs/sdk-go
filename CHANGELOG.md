@@ -26,8 +26,28 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
   and an agreement's unsigned fields, are not. Free-form fields (`claims`,
   `scope`, `execution_parameters`, ...) stay open.
 
+- **Records are valid only in their canonical form.** `VerifyBoundaryDecision`
+  and `VerifyAgreement` refuse a record signed over a timestamp the reference
+  does not write (`+00:00` rather than `Z`, a fraction `.000`) as
+  `non_canonical_form`; `VerifyDataLicensePolicySignature` returns false; an
+  intent check reports `Not in canonical form: intent` or `...: policy`.
+  Records the NA signs are always canonical.
+- **JSON is read strictly.** The verifiers, `CanonicalJSON` and every client
+  response refuse JSON every implementation would not read alike with a
+  `*StrictJSONError` whose `Reason` is `duplicate_key`, `non_finite_number`
+  (`1e400`), `integer_out_of_range` (outside `-2**63 .. 2**64 - 1`),
+  `negative_zero`, `lone_surrogate` (which `encoding/json` replaced with
+  U+FFFD) or `invalid_json` (not JSON, a byte order mark, text that is not
+  UTF-8, or arrays and objects nested more than `MaxStrictDepth`, 64, deep).
+  A client response wraps it (`decode response: ...`): use `errors.As`.
+- `encoding/json` writes the float `-0.0` as `-0`, which the Network
+  Authority now refuses as `negative_zero`: send `0` instead in request
+  values you compute.
+
 ### Added
 
+- `CheckStrictJSON`, `StrictJSONError`, `MaxStrictDepth` and
+  `CanonicalTimestamp`; the shared conformance suite `canonical`.
 - `UnknownFields(model, recordJSON)`; `python scripts/sync_canonical_registry.py`
   regenerates the embedded registry from a new copy of the suite.
 
