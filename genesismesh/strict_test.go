@@ -203,6 +203,36 @@ func TestAFieldOutsideTheSignatureFailsTheSignature(t *testing.T) {
 	}
 }
 
+func TestAnIntentCheckRefusesAPolicyMissingAFieldTheReferenceWrites(t *testing.T) {
+	// v1.3.0: the policy's whole canonical form is checked, not only its
+	// timestamps; the reference matches this in 1.3.1.
+	var in vector
+	for _, v := range loadVectors(t) {
+		if v.ID == "int-001" {
+			in = v
+		}
+	}
+	at, _ := ParseTimestamp(text(t, in.Input["at"]))
+	for _, field := range []string{
+		"policy_id", "allowed_source_ids", "allowed_access_types", "max_volume_bytes_per_session",
+		"prohibited_classification_tags",
+	} {
+		policy, err := decodeObject(in.Input["policy"], "policy")
+		if err != nil {
+			t.Fatal(err)
+		}
+		delete(policy, field)
+		raw, err := json.Marshal(policy)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := VerifyDataAccessIntent(in.Input["intent"], raw, strings_(t, in.Input["agent_public_keys"]), at)
+		if err != nil || got.Valid || got.Violations[0].Detail != "Not in canonical form: policy" {
+			t.Errorf("without %s: %+v %v", field, got, err)
+		}
+	}
+}
+
 func TestAnEmptyKeyIsAnUnknownField(t *testing.T) {
 	// v1.3.0: a model without a signature field does not read "" as one.
 	found, err := UnknownFields("ContextRecord", []byte(`{"":1,"zz":2}`))
