@@ -1,6 +1,8 @@
 package genesismesh
 
 import (
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"reflect"
@@ -181,4 +183,144 @@ func TestTamperedPolicyBindingIsRejected(t *testing.T) {
 		return
 	}
 	t.Fatal("bd-001 not found")
+}
+
+func interopVector(t *testing.T, id string) vector {
+	t.Helper()
+	for _, v := range loadVectors(t) {
+		if v.ID == id {
+			return v
+		}
+	}
+	t.Fatalf("no vector %s", id)
+	return vector{}
+}
+
+// conformanceKey returns the vector generator's signing key (seeds 00..1f,
+// 20..3f, 40..5f) for one of pubs.
+func conformanceKey(t *testing.T, pubs []string) ed25519.PrivateKey {
+	t.Helper()
+	for start := 0; start < 96; start += 32 {
+		seed := make([]byte, ed25519.SeedSize)
+		for i := range seed {
+			seed[i] = byte(start + i)
+		}
+		key := ed25519.NewKeyFromSeed(seed)
+		pub := base64.StdEncoding.EncodeToString(key.Public().(ed25519.PublicKey))
+		for _, p := range pubs {
+			if p == pub {
+				return key
+			}
+		}
+	}
+	t.Fatal("no generator key for these public keys")
+	return nil
+}
+
+// resigned signs record over its signed form, as the vector generator does.
+func resigned(t *testing.T, record object, key ed25519.PrivateKey, omitWhenNull ...string) []byte {
+	t.Helper()
+	c, err := canonicalOf(without(record, []string{"signature"}, omitWhenNull...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	record["signature"] = map[string]interface{}{
+		"key_id": "k", "sig": base64.StdEncoding.EncodeToString(ed25519.Sign(key, []byte(c))),
+	}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func withValue(t *testing.T, raw json.RawMessage, key string, value interface{}) object {
+	t.Helper()
+	obj, err := decodeObject(raw, "record")
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj[key] = value
+	return obj
+}
+
+func TestASignatureIsMissingOnlyWhenAbsentOrNull(t *testing.T) {
+	// v1.3.1: as in the reference; a signature of another shape fails as
+	// invalid_signature ({"sig": ""} was missing_signature here).
+	bd := interopVector(t, "bd-003")
+	now, _ := ParseTimestamp(text(t, bd.Input["now"]))
+	opts := DecisionVerifyOptions{OperatorPublicKeys: strings_(t, bd.Input["operator_public_keys"]), Now: now}
+	verify := func(record object) DecisionVerification {
+		t.Helper()
+		raw, _ := json.Marshal(record)
+		got, err := VerifyBoundaryDecision(raw, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	for _, sig := range []interface{}{
+		map[string]interface{}{"key_id": "k", "sig": ""}, map[string]interface{}{}, "abc", []interface{}{}, 5,
+	} {
+		if got := verify(withValue(t, bd.Input["decision"], "signature", sig)); got.Reason != "invalid_signature" {
+			t.Errorf("signature %v: %+v", sig, got)
+		}
+	}
+	if got := verify(withValue(t, bd.Input["decision"], "signature", nil)); got.Reason != "missing_signature" {
+		t.Errorf("null signature: %+v", got)
+	}
+	absent := withValue(t, bd.Input["decision"], "signature", nil)
+	delete(absent, "signature")
+	if got := verify(absent); got.Reason != "missing_signature" {
+		t.Errorf("no signature: %+v", got)
+	}
+	expired := interopVector(t, "bd-006")
+	expiredAt, _ := ParseTimestamp(text(t, expired.Input["now"]))
+	raw, _ := json.Marshal(withValue(t, expired.Input["decision"], "signature", map[string]interface{}{"sig": ""}))
+	got, err := VerifyBoundaryDecision(raw, DecisionVerifyOptions{
+		OperatorPublicKeys: strings_(t, expired.Input["operator_public_keys"]), Now: expiredAt,
+	})
+	if err != nil || got.Reason != "decision_expired" {
+		t.Errorf("expired, empty signature: %+v %v", got, err)
+	}
+
+	in := interopVector(t, "int-001")
+	at, _ := ParseTimestamp(text(t, in.Input["at"]))
+	for sig, want := range map[string]string{
+		`{"key_id":"k","sig":""}`: "Invalid intent signature", `"abc"`: "Invalid intent signature",
+		"null": "Missing intent signature",
+	} {
+		var value interface{}
+		_ = json.Unmarshal([]byte(sig), &value)
+		raw, _ := json.Marshal(withValue(t, in.Input["intent"], "signature", value))
+		got, err := VerifyDataAccessIntent(raw, in.Input["policy"], strings_(t, in.Input["agent_public_keys"]), at)
+		if err != nil || got.Valid || got.Violations[0].Detail != want {
+			t.Errorf("intent signature %s: %+v %v", sig, got, err)
+		}
+	}
+}
+
+func TestAnExpiryThatDoesNotParseIsLeftToTheSignatureAndFormChecks(t *testing.T) {
+	// v1.3.1: as in the reference; it was an error before any of them.
+	newer := registryVector(t, "verify-decision-newer-signed-field").Input
+	now, _ := ParseTimestamp(text(t, newer["now"]))
+	keys := strings_(t, newer["operator_public_keys"])
+	opts := DecisionVerifyOptions{OperatorPublicKeys: keys, Now: now}
+	key := conformanceKey(t, keys)
+	for _, value := range []interface{}{"x", "", nil, true} {
+		raw := resigned(t, withValue(t, newer["decision"], "decision_valid_until", value), key, decisionOmittedWhenAbsent...)
+		if got, err := VerifyBoundaryDecision(raw, opts); err != nil || got.Reason != "unknown_field" {
+			t.Errorf("decision_valid_until %v: %+v %v", value, got, err)
+		}
+	}
+	unsigned, _ := json.Marshal(withValue(t, newer["decision"], "decision_valid_until", "x"))
+	if got, err := VerifyBoundaryDecision(unsigned, opts); err != nil || got.Reason != "invalid_signature" {
+		t.Errorf("not re-signed: %+v %v", got, err)
+	}
+	// Nothing else refuses it: the expiry's error, never an acceptance.
+	bd := interopVector(t, "bd-003")
+	raw := resigned(t, withValue(t, bd.Input["decision"], "decision_valid_until", 5), key, decisionOmittedWhenAbsent...)
+	if got, err := VerifyBoundaryDecision(raw, DecisionVerifyOptions{OperatorPublicKeys: keys, Now: now}); err == nil {
+		t.Errorf("an expiry of 5 verified: %+v", got)
+	}
 }
