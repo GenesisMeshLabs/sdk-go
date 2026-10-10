@@ -174,12 +174,19 @@ type AgreementVerification struct {
 }
 
 // agreementCanonical is the body both parties sign; identical for CapabilityCounter and AgreementRecord.
+// agreementCanonicalFields are the fields both parties sign (checked against the field registry).
+var agreementCanonicalFields = []string{
+	"agreed_terms", "graph_digest", "offer_id", "offerer_evidence",
+	"offerer_sovereign_id", "responder_evidence", "responder_sovereign_id",
+}
+
+// decisionOmittedWhenAbsent are the decision fields left out of the signed form when null
+// (checked against the field registry).
+var decisionOmittedWhenAbsent = []string{"policy_binding", "attestation_binding"}
+
 func agreementCanonical(obj object) (string, error) {
 	body := object{}
-	for _, k := range []string{
-		"agreed_terms", "graph_digest", "offer_id", "offerer_evidence",
-		"offerer_sovereign_id", "responder_evidence", "responder_sovereign_id",
-	} {
+	for _, k := range agreementCanonicalFields {
 		body[k] = obj[k]
 	}
 	return canonicalOf(body)
@@ -224,6 +231,10 @@ func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, 
 	}
 	if expectedGraphDigest != "" && str(obj, "graph_digest") != expectedGraphDigest {
 		return result(false, "graph_digest_mismatch"), nil
+	}
+	// v1.2.0: an authentic agreement with a signed field this SDK does not know (strict.go).
+	if hasUnknownFields("AgreementRecord", obj) {
+		return result(false, "unknown_field"), nil
 	}
 	return result(true, "accepted"), nil
 }
@@ -286,12 +297,27 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 	if now.After(validUntil) {
 		return reject("decision_expired")
 	}
-	canonical, err := canonicalOf(without(d, []string{"signature"}, "policy_binding", "attestation_binding"))
+	canonical, err := canonicalOf(without(d, []string{"signature"}, decisionOmittedWhenAbsent...))
 	if err != nil {
 		return DecisionVerification{}, err
 	}
 	if !verifyEd25519(canonical, sig, opts.OperatorPublicKeys) {
 		return reject("invalid_signature")
+	}
+	// v1.2.0: an authentic decision with a signed field this SDK does not know, or expected
+	// inputs it cannot read, is refused by name: upgrade this SDK (strict.go).
+	if hasUnknownFields("BoundaryDecision", d) {
+		return reject("unknown_field")
+	}
+	for _, raw := range opts.ExpectedPolicies {
+		if p, err := decodeObject(raw, "expected policy"); err == nil && hasUnknownFields("BoundaryPolicy", p) {
+			return reject("unknown_field")
+		}
+	}
+	if opts.ExpectedAttestation != nil {
+		if a, err := decodeObject(opts.ExpectedAttestation, "expected attestation"); err == nil && hasUnknownFields("MembershipAttestation", a) {
+			return reject("unknown_field")
+		}
 	}
 
 	if proof, ok := d["freshness_proof"].(map[string]interface{}); ok && len(opts.FreshnessProofIssuerKeys) > 0 {
@@ -451,6 +477,9 @@ func VerifyDataLicensePolicySignature(policyJSON []byte, licensorKeys []string) 
 	if err != nil {
 		return false, err
 	}
+	if hasUnknownFields("DataLicensePolicy", p) {
+		return false, nil
+	}
 	return verifyEd25519(c, sig, licensorKeys), nil
 }
 
@@ -503,6 +532,23 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	}
 	fail := func(violations []DataUsageViolation) DataIntentVerification {
 		return DataIntentVerification{Valid: false, ViolationReason: violations[0].ViolationType, Violations: violations}
+	}
+	// v1.2.0: fields this SDK does not know, as the reference reports them (strict.go).
+	intentUnknown := unknownFieldsIn("DataAccessIntent", intent, "", true)
+	if len(intentUnknown) > 0 {
+		s, has := signatureOf(intent, "signature")
+		c, err := canonicalOf(without(intent, []string{"signature"}))
+		if err != nil {
+			return DataIntentVerification{}, err
+		}
+		if !has || !verifyEd25519(c, s, agentKeys) {
+			return fail([]DataUsageViolation{{"intent_exceeds_license", "Invalid intent signature"}}), nil
+		}
+	}
+	unknown := append(intentUnknown, unknownFieldsIn("DataLicensePolicy", policy, "policy.", true)...)
+	if len(unknown) > 0 {
+		sort.Strings(unknown)
+		return fail([]DataUsageViolation{{"intent_exceeds_license", "Unknown field: " + strings.Join(unknown, ", ")}}), nil
 	}
 	sig, ok := signatureOf(intent, "signature")
 	if !ok {

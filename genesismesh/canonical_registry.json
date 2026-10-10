@@ -1,0 +1,438 @@
+{
+  "version": 1,
+  "entry_kinds": [
+    "decision",
+    "execution",
+    "justification",
+    "retention_checkpoint"
+  ],
+  "models": {
+    "AgreementRecord": {
+      "fields": {
+        "agreed_terms": {
+          "object": "AgreementTerms"
+        },
+        "agreement_id": null,
+        "established_at": null,
+        "expires_at": null,
+        "graph_digest": null,
+        "offer_id": null,
+        "offerer_evidence": "open",
+        "offerer_sovereign_id": null,
+        "responder_evidence": "open",
+        "responder_sovereign_id": null,
+        "signatures": {
+          "list": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signatures",
+      "canonical_fields": [
+        "agreed_terms",
+        "graph_digest",
+        "offer_id",
+        "offerer_evidence",
+        "offerer_sovereign_id",
+        "responder_evidence",
+        "responder_sovereign_id"
+      ]
+    },
+    "AgreementTerms": {
+      "fields": {
+        "capabilities": null,
+        "freshness_commitment": null,
+        "scope": "open",
+        "valid_from": null,
+        "valid_until": null
+      }
+    },
+    "AppliedPolicy": {
+      "fields": {
+        "policy_digest": null,
+        "policy_id": null,
+        "signed_by": null,
+        "version": null
+      }
+    },
+    "AttestationBinding": {
+      "fields": {
+        "attestation_digest": null,
+        "attestation_id": null,
+        "issuer_sovereign_id": null,
+        "revocation_seq_checked": null,
+        "subject_id": null
+      }
+    },
+    "BoundaryDecision": {
+      "fields": {
+        "agreement_id": null,
+        "attestation_binding": {
+          "object": "AttestationBinding"
+        },
+        "authorized": null,
+        "context_id": null,
+        "decision_id": null,
+        "decision_made_at": null,
+        "decision_valid_until": null,
+        "denial_reason": null,
+        "freshness_proof": {
+          "object": "FreshnessProof"
+        },
+        "gate_results": {
+          "list": "GateResult"
+        },
+        "operator_sovereign_id": null,
+        "policy_binding": {
+          "object": "PolicyBinding"
+        },
+        "signature": {
+          "object": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signature",
+      "omit_when_none": [
+        "policy_binding",
+        "attestation_binding"
+      ]
+    },
+    "BoundaryPolicy": {
+      "fields": {
+        "description": null,
+        "gates": {
+          "list": "GateSpec"
+        },
+        "issued_at": null,
+        "issued_by": null,
+        "issuer_sovereign_id": null,
+        "policy_id": null,
+        "selector": {
+          "object": "PolicySelector"
+        },
+        "signature": {
+          "object": "Signature"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "version": null
+      },
+      "root": true,
+      "signature_field": "signature"
+    },
+    "ContextRecord": {
+      "fields": {
+        "agreement_id": null,
+        "attestation_id": null,
+        "attributes": "open",
+        "context_freshness_seq": null,
+        "context_id": null,
+        "parent_kind": null,
+        "provider_sovereign_id": null,
+        "request_parameters": "open",
+        "requested_at": null,
+        "requested_capability": null,
+        "requester_sovereign_id": null
+      },
+      "root": true,
+      "signature_field": null,
+      "omit_when_none": [
+        "attestation_id"
+      ]
+    },
+    "DataAccessIntent": {
+      "fields": {
+        "agent_sovereign_id": null,
+        "decision_id": null,
+        "declared_access_types": null,
+        "declared_at": null,
+        "declared_sources": {
+          "list": "DataSourceDescriptor"
+        },
+        "estimated_volume_bytes": null,
+        "expires_at": null,
+        "intent_id": null,
+        "signature": {
+          "object": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signature"
+    },
+    "DataLicensePolicy": {
+      "fields": {
+        "allowed_access_types": null,
+        "allowed_source_ids": null,
+        "licensee_sovereign_id": null,
+        "licensor_sovereign_id": null,
+        "max_volume_bytes_per_session": null,
+        "policy_id": null,
+        "prohibited_classification_tags": null,
+        "signature": {
+          "object": "Signature"
+        },
+        "valid_from": null,
+        "valid_until": null
+      },
+      "root": true,
+      "signature_field": "signature"
+    },
+    "DataSourceDescriptor": {
+      "fields": {
+        "classification_tags": null,
+        "owner_sovereign_id": null,
+        "source_id": null,
+        "source_type": null
+      }
+    },
+    "EvidenceStoreEntry": {
+      "fields": {
+        "attestation_id": null,
+        "capability": null,
+        "context_id": null,
+        "decision_id": null,
+        "entry_kind": null,
+        "evidence_id": null,
+        "exec_sequence_no": null,
+        "executor_sovereign_id": null,
+        "outcome": null,
+        "payload_digest": null,
+        "prev_entry_digest": null,
+        "recorded_at": null,
+        "resource_action": null,
+        "resource_id": null,
+        "resource_sequence": null,
+        "store_sequence": null,
+        "vendor_id": null
+      },
+      "root": true,
+      "signature_field": null
+    },
+    "ExecutionEvidence": {
+      "fields": {
+        "agreement_id": null,
+        "context_id": null,
+        "decision_id": null,
+        "evidence_id": null,
+        "executed_at": null,
+        "executed_capability": null,
+        "execution_parameters": "open",
+        "executor_sovereign_id": null,
+        "outcome": null,
+        "outcome_detail": null,
+        "prev_evidence_digest": null,
+        "prev_resource_digest": null,
+        "resource_action": null,
+        "resource_id": null,
+        "resource_sequence": null,
+        "sequence_no": null,
+        "signature": {
+          "object": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signature",
+      "omit_when_none": [
+        "resource_id",
+        "resource_action",
+        "resource_sequence",
+        "prev_resource_digest"
+      ]
+    },
+    "FreshnessProof": {
+      "fields": {
+        "attested_at": null,
+        "feed_digest": null,
+        "feed_sequence": null,
+        "feed_sovereign_id": null,
+        "issuer_sovereign_id": null,
+        "proof_id": null,
+        "proof_valid_until": null,
+        "signature": {
+          "object": "Signature"
+        }
+      }
+    },
+    "GateResult": {
+      "fields": {
+        "detail": null,
+        "gate_name": null,
+        "passed": null
+      }
+    },
+    "GateSpec": {
+      "fields": {
+        "config": "open",
+        "disclose_input": null,
+        "gate_id": null,
+        "gate_type": null,
+        "mode": null,
+        "order": null
+      }
+    },
+    "GateTrace": {
+      "fields": {
+        "agreement_id": null,
+        "decision_id": null,
+        "entries": {
+          "list": "GateTraceEntry"
+        },
+        "final_authorized": null,
+        "operator_sovereign_id": null,
+        "short_circuited_at": null,
+        "trace_id": null,
+        "traced_at": null
+      }
+    },
+    "GateTraceEntry": {
+      "fields": {
+        "evaluated_at": null,
+        "gate_name": null,
+        "gate_type": null,
+        "inputs": "open",
+        "metadata": "open",
+        "reason": null,
+        "result": null
+      }
+    },
+    "JustificationProof": {
+      "fields": {
+        "decision_id": null,
+        "issuer_sovereign_id": null,
+        "proof_id": null,
+        "proof_issued_at": null,
+        "signature": {
+          "object": "Signature"
+        },
+        "trace": {
+          "object": "GateTrace"
+        }
+      },
+      "root": true,
+      "signature_field": "signature"
+    },
+    "MembershipAttestation": {
+      "fields": {
+        "attestation_id": null,
+        "claims": "open",
+        "expires_at": null,
+        "issued_at": null,
+        "issued_by": null,
+        "issuer_sovereign_id": null,
+        "roles": null,
+        "signatures": {
+          "list": "Signature"
+        },
+        "status": null,
+        "subject_id": null,
+        "subject_public_key": null,
+        "valid_from": null
+      },
+      "root": true,
+      "signature_field": "signatures"
+    },
+    "PolicyBinding": {
+      "fields": {
+        "context_digest": null,
+        "gate_evaluations": {
+          "list": "PolicyGateEvaluation"
+        },
+        "policies": {
+          "list": "AppliedPolicy"
+        },
+        "policy_set_digest": null,
+        "registry_gate_types": null,
+        "resolution_failure": null,
+        "resolution_status": null
+      }
+    },
+    "PolicyGateEvaluation": {
+      "fields": {
+        "gate_id": null,
+        "gate_type": null,
+        "mode": null,
+        "order": null,
+        "outcome": null,
+        "passed": null,
+        "policy_id": null,
+        "policy_version": null
+      }
+    },
+    "PolicySelector": {
+      "fields": {
+        "agreement_ids": null,
+        "capabilities": null,
+        "parameter_equals": "open",
+        "parent_kinds": null,
+        "provider_sovereign_ids": null,
+        "requester_sovereign_ids": null
+      }
+    },
+    "ResourceHead": {
+      "fields": {
+        "record_digest": null,
+        "resource_sequence": null
+      }
+    },
+    "RetentionCheckpoint": {
+      "fields": {
+        "checkpoint_id": null,
+        "created_at": null,
+        "cutoff": null,
+        "issued_by": null,
+        "last_removed_entry_digest": null,
+        "previous_checkpoint_id": null,
+        "removed_count": null,
+        "removed_through_sequence": null,
+        "resource_heads": {
+          "map": "ResourceHead"
+        },
+        "signature": {
+          "object": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signature"
+    },
+    "Signature": {
+      "fields": {
+        "key_id": null,
+        "sig": null
+      }
+    },
+    "SovereignRevocationFeed": {
+      "fields": {
+        "feed_id": null,
+        "issued_at": null,
+        "issued_by": null,
+        "issuer_sovereign_id": null,
+        "revocation_reasons": "open",
+        "revoked_attestation_ids": null,
+        "sequence": null,
+        "signatures": {
+          "list": "Signature"
+        }
+      },
+      "root": true,
+      "signature_field": "signatures"
+    },
+    "StoreAnchor": {
+      "fields": {
+        "anchor_sequence": null,
+        "anchored_at": null,
+        "entry_digest": null,
+        "issued_by": null,
+        "previous_anchor_digest": null,
+        "signature": {
+          "object": "Signature"
+        },
+        "sovereign_id": null,
+        "store_sequence": null
+      },
+      "root": true,
+      "signature_field": "signature",
+      "omit_when_none": [
+        "previous_anchor_digest"
+      ]
+    }
+  }
+}
