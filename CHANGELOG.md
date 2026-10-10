@@ -7,7 +7,11 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-10-10
+
+Coordinated Genesis Mesh v1.2.0 release, *Nothing Lost, Anchored*:
+verifiers that refuse what they do not know, strict input and records only
+in canonical form.
 
 ### Changed (breaking)
 
