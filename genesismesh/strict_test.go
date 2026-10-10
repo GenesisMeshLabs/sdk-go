@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -210,6 +211,59 @@ func TestAnEmptyKeyIsAnUnknownField(t *testing.T) {
 	}
 	if !reflect.DeepEqual(found, []string{"", "zz"}) {
 		t.Fatalf("got %v", found)
+	}
+}
+
+func strictReason(t *testing.T, text string) string {
+	t.Helper()
+	err := CheckStrictJSON([]byte(text))
+	if err == nil {
+		return "ok"
+	}
+	var strict *StrictJSONError
+	if !errors.As(err, &strict) {
+		t.Fatalf("%q: %v", text, err)
+	}
+	return strict.Reason
+}
+
+func TestANumberMatchesTheGrammarBeforeItsValueIsChecked(t *testing.T) {
+	// v1.3.1, as the reference reads it: a number that breaks off after "."
+	// or an exponent letter is invalid_json; only a whole number goes on to
+	// the value checks, and what follows it is the next token.
+	for text, want := range map[string]string{
+		"[-0.]": "invalid_json", "[-0e]": "invalid_json", "[-0.e1]": "invalid_json", "[-0E+]": "invalid_json",
+		`{"a":-0.}`: "invalid_json", "[100000000000000000000.]": "invalid_json", "[18446744073709551616e]": "invalid_json",
+		"[1.]": "invalid_json", "[1e]": "invalid_json", "[+1]": "invalid_json", "[.5]": "invalid_json",
+		"[00]": "invalid_json", "[01]": "invalid_json", "[1.5+]": "invalid_json", "[1e20.]": "invalid_json",
+		"[-01]": "negative_zero", "[-0-]": "negative_zero", "[-0]": "negative_zero", "[-0 1]": "negative_zero",
+		"[-0,1e400]": "negative_zero", "-0": "negative_zero", "[1e400.]": "non_finite_number",
+		"[1e400]": "non_finite_number", "[18446744073709551616]": "integer_out_of_range",
+		"[0x1]": "invalid_json", "[1,-0.0,0e5]": "ok",
+	} {
+		if got := strictReason(t, text); got != want {
+			t.Errorf("%s: got %s, want %s", text, got, want)
+		}
+	}
+}
+
+func TestAnOverlongIntegerIsRefusedBeforeItIsParsed(t *testing.T) {
+	// v1.3.1: big.Int took seconds to parse 3M digits.
+	for text, want := range map[string]string{
+		"18446744073709551615": "ok", "-9223372036854775808": "ok", "-9223372036854775809": "integer_out_of_range",
+		"100000000000000000000": "integer_out_of_range", "-100000000000000000000": "integer_out_of_range",
+	} {
+		if got := strictReason(t, text); got != want {
+			t.Errorf("%s: got %s, want %s", text, got, want)
+		}
+	}
+	long := "[" + strings.Repeat("7", 3_000_000) + "]"
+	start := time.Now()
+	if got := strictReason(t, long); got != "integer_out_of_range" {
+		t.Fatalf("got %s", got)
+	}
+	if elapsed := time.Since(start); elapsed > 2*time.Second {
+		t.Fatalf("3M digits took %v", elapsed)
 	}
 }
 
