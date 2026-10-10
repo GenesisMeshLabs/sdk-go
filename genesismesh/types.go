@@ -73,11 +73,11 @@ func (a *AgreementRecord) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*a = AgreementRecord(w)
-	var terms struct {
-		Capabilities []string `json:"capabilities"`
-	}
-	if len(a.AgreedTerms) > 0 && json.Unmarshal(a.AgreedTerms, &terms) == nil {
-		a.Capabilities = terms.Capabilities
+	// v1.3.1: "capabilities" in its own case only, as every implementation reads it.
+	var terms map[string]json.RawMessage
+	var capabilities []string
+	if json.Unmarshal(a.AgreedTerms, &terms) == nil && json.Unmarshal(terms["capabilities"], &capabilities) == nil {
+		a.Capabilities = capabilities
 	}
 	a.CreatedAt = a.EstablishedAt
 	return nil

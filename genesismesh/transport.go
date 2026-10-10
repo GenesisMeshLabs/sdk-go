@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
 )
@@ -147,12 +149,87 @@ func (t *transport) do(ctx context.Context, method, path string, body interface{
 
 	if out != nil {
 		// v1.2.0: refuse JSON every implementation would not read alike.
-		if err := CheckStrictJSON(raw); err != nil {
+		value, err := decodeJSON(raw)
+		if err != nil {
 			return fmt.Errorf("genesismesh: decode response: %w", err)
+		}
+		// v1.3.1: encoding/json reads a key in another case into a field, so
+		// {"authorized":false,"Authorized":true} read as authorized; every
+		// other implementation reads such a key as one it does not know.
+		if dropFoldedKeys(reflect.TypeOf(out), value) {
+			var buf bytes.Buffer
+			enc := json.NewEncoder(&buf)
+			enc.SetEscapeHTML(false)
+			if err := enc.Encode(value); err != nil {
+				return fmt.Errorf("genesismesh: decode response: %w", err)
+			}
+			raw = buf.Bytes()
 		}
 		if err := json.Unmarshal(raw, out); err != nil {
 			return fmt.Errorf("genesismesh: decode response: %w", err)
 		}
 	}
 	return nil
+}
+
+// dropFoldedKeys removes from v, at any depth, the keys that encoding/json
+// would read into a field of t only by ignoring case, and reports whether it
+// removed any (v1.3.1).
+func dropFoldedKeys(t reflect.Type, v interface{}) bool {
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	dropped := false
+	switch t.Kind() {
+	case reflect.Struct:
+		obj, ok := v.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		fields := jsonFields(t)
+		for key, value := range obj {
+			if field, exact := fields[key]; exact {
+				dropped = dropFoldedKeys(field, value) || dropped
+				continue
+			}
+			for name := range fields {
+				if strings.EqualFold(key, name) { // the folding encoding/json applies
+					delete(obj, key)
+					dropped = true
+					break
+				}
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		if items, ok := v.([]interface{}); ok {
+			for _, item := range items {
+				dropped = dropFoldedKeys(t.Elem(), item) || dropped
+			}
+		}
+	case reflect.Map:
+		if obj, ok := v.(map[string]interface{}); ok {
+			for _, item := range obj {
+				dropped = dropFoldedKeys(t.Elem(), item) || dropped
+			}
+		}
+	}
+	return dropped
+}
+
+// jsonFields maps the JSON names of a struct's fields to their types.
+func jsonFields(t reflect.Type) map[string]reflect.Type {
+	fields := make(map[string]reflect.Type, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		tag := f.Tag.Get("json")
+		if !f.IsExported() || tag == "-" {
+			continue
+		}
+		name, _, _ := strings.Cut(tag, ",")
+		if name == "" {
+			name = f.Name
+		}
+		fields[name] = f.Type
+	}
+	return fields
 }
