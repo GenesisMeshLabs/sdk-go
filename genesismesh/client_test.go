@@ -3,6 +3,7 @@ package genesismesh
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -150,4 +151,72 @@ func isValidationError(err error, target **ValidationError) bool {
 		*target = ve
 	}
 	return ok
+}
+
+func respondRaw(body string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}
+}
+
+func TestClient_ReadsKeysInTheirOwnCaseOnly(t *testing.T) {
+	// v1.3.1: encoding/json reads a key in another case into the same field,
+	// so the first decision read as authorized; every other implementation
+	// reads such a key as one it does not know.
+	for _, body := range []string{
+		`{"decision_id":"dec-1","authorized":false,"Authorized":true}`,
+		`{"decision_id":"dec-1","Authorized":true,"authorized":false}`,
+		`{"decision_id":"dec-1","AUTHORIZED":true,"Decision_Id":"dec-2"}`,
+		`{"decision_id":"dec-1","deciſion_id":"dec-2"}`, // ſ folds to s
+	} {
+		c, _ := newTestClient(t, respondRaw(body))
+		dec, err := c.Boundary.Decide(context.Background(), map[string]interface{}{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dec.Authorized || dec.Allowed || dec.DecisionID != "dec-1" {
+			t.Errorf("%s: authorized %v, decision_id %q", body, dec.Authorized, dec.DecisionID)
+		}
+	}
+}
+
+func TestClient_ReadsNestedKeysInTheirOwnCaseOnly(t *testing.T) {
+	c, _ := newTestClient(t, respondRaw(
+		`{"intent_id":"i-1","declared_sources":[{"source_id":"s-1","Source_Id":"s-2"}],"Estimated_Volume_Bytes":5}`))
+	intent, err := c.DataUsage.CreateIntent(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(intent.DeclaredSources) != 1 || intent.DeclaredSources[0].SourceID != "s-1" || intent.EstimatedVolumeBytes != nil {
+		t.Errorf("got %+v", intent)
+	}
+
+	c, _ = newTestClient(t, respondRaw(`{"Valid":true,"Accepted":true,"reason":"r"}`))
+	verified, err := c.DataUsage.Verify(context.Background(), map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified.Valid || verified.Accepted || verified.Reason != "r" {
+		t.Errorf("got %+v", verified)
+	}
+
+	c, _ = newTestClient(t, respondRaw(
+		`{"agreement_id":"a-1","agreed_terms":{"capabilities":["read"],"Capabilities":["write"]}}`))
+	agreement, err := c.Agreement.Accept(context.Background(), &OfferRecord{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(agreement.Capabilities) != 1 || agreement.Capabilities[0] != "read" {
+		t.Errorf("got %v", agreement.Capabilities)
+	}
+}
+
+func TestClient_RefusesADuplicateKey(t *testing.T) {
+	c, _ := newTestClient(t, respondRaw(`{"decision_id":"dec-1","authorized":false,"authorized":true}`))
+	_, err := c.Boundary.Decide(context.Background(), map[string]interface{}{})
+	var strict *StrictJSONError
+	if !errors.As(err, &strict) || strict.Reason != "duplicate_key" {
+		t.Fatalf("got %v", err)
+	}
 }
