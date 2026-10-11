@@ -6,16 +6,19 @@ Go SDK for the Genesis Mesh Network Authority HTTP API.
 
 ## Scope
 
-This SDK (1.3) covers the Network Authority's trust API: the sub-clients
+This SDK (1.4) covers the Network Authority's trust API: the sub-clients
 below (agreements, boundary decisions, trust evidence, attestations,
 selective disclosure, consensus and data usage), offline verification of
 their signed records, and signed admin calls to any other route. It has no
-governed lifecycle API: no evidence store client or evidence outbox, and none
+governed lifecycle API: no evidence store client or evidence outbox, none
 of the 1.3.0 changes outside the controlled path (observations, break-glass
-records, the record outbox). Those live in the
+records, the record outbox), and none of the 1.4.0 remediation and review
+APIs (remediation records, the due queue, reviews). Those live in the
 [TypeScript SDK](https://github.com/GenesisMeshLabs/sdk-typescript) and the
 [Rust SDK](https://github.com/GenesisMeshLabs/sdk-rust). The embedded field
 registry lists their records, but this SDK does not verify evidence exports.
+A boundary policy with the 1.4.0 sections (`remediation`, `review_required`,
+`emergency`) verifies here like any other.
 
 ## Install
 
