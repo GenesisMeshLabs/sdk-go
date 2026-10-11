@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -167,6 +168,15 @@ func utf16Decode(units []uint16) []rune {
 	return out
 }
 
+// maxIntegerDigits is the length of 2**64 - 1: a longer integer is out of
+// range whatever its digits (v1.3.1).
+const maxIntegerDigits = 20
+
+// number reads a number by the RFC 8259 grammar: a "." or an exponent letter
+// commits to a fraction or an exponent, which must then have its digits
+// ("-0.", "1e" and "1E+" are invalid_json). Only a whole number goes on to
+// the negative_zero, range and precision checks; what follows it is the next
+// token ("[-01]" is negative_zero for the "-0" before the "1").
 func (s *strictScanner) number() error {
 	start := s.at
 	digits := func() bool {
@@ -209,6 +219,11 @@ func (s *strictScanner) number() error {
 	if integer {
 		if literal == "-0" {
 			return refuse("negative_zero", "the integer -0")
+		}
+		// v1.3.1: refused before big.Int, whose parse time grows with the
+		// square of the length (3M digits took seconds).
+		if len(strings.TrimPrefix(literal, "-")) > maxIntegerDigits {
+			return refuse("integer_out_of_range", fmt.Sprintf("an integer longer than %d digits", maxIntegerDigits))
 		}
 		n, _ := new(big.Int).SetString(literal, 10)
 		if n.Cmp(minInteger) < 0 || n.Cmp(maxInteger) > 0 {

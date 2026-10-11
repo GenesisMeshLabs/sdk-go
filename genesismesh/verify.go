@@ -95,6 +95,13 @@ func signatureOf(obj object, field string) (string, bool) {
 	return s, ok && s != ""
 }
 
+// signatureAbsent reports whether a record has no signature: the field is
+// absent or null (v1.3.1, as the reference reads it).
+func signatureAbsent(obj object) bool {
+	v, present := obj["signature"]
+	return !present || v == nil
+}
+
 func signaturesOf(obj object) []string {
 	list, _ := obj["signatures"].([]interface{})
 	out := make([]string, 0, len(list))
@@ -286,19 +293,20 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 	}
 	reject := func(reason string) (DecisionVerification, error) { return result(false, reason, authorized), nil }
 
-	sig, ok := signatureOf(d, "signature")
-	if !ok {
+	// v1.3.1: missing only when absent or null, as in the reference; a
+	// signature of another shape fails as invalid_signature.
+	if signatureAbsent(d) {
 		return reject("missing_signature")
 	}
+	sig, _ := signatureOf(d, "signature")
 	now := opts.Now
 	if now.IsZero() {
 		now = time.Now()
 	}
-	validUntil, err := ParseTimestamp(str(d, "decision_valid_until"))
-	if err != nil {
-		return DecisionVerification{}, err
-	}
-	if now.After(validUntil) {
+	// v1.3.1: an expiry that does not parse is left to the signature and form
+	// checks, as in the reference; when they pass, its error is returned.
+	validUntil, expiryErr := ParseTimestamp(str(d, "decision_valid_until"))
+	if expiryErr == nil && now.After(validUntil) {
 		return reject("decision_expired")
 	}
 	canonical, err := canonicalOf(without(d, []string{"signature"}, decisionOmittedWhenAbsent...))
@@ -326,6 +334,9 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 	// v1.2.0: a decision signed over a form the reference does not write.
 	if len(nonCanonicalFields("BoundaryDecision", d)) > 0 {
 		return reject("non_canonical_form")
+	}
+	if expiryErr != nil {
+		return DecisionVerification{}, expiryErr
 	}
 
 	if proof, ok := d["freshness_proof"].(map[string]interface{}); ok && len(opts.FreshnessProofIssuerKeys) > 0 {
@@ -566,10 +577,11 @@ func VerifyDataAccessIntent(intentJSON, policyJSON []byte, agentKeys []string, a
 	if len(nonCanonicalFields("DataLicensePolicy", policy)) > 0 {
 		return fail([]DataUsageViolation{{"intent_exceeds_license", "Not in canonical form: policy"}}), nil
 	}
-	sig, ok := signatureOf(intent, "signature")
-	if !ok {
+	// v1.3.1: missing only when absent or null, as in the reference.
+	if signatureAbsent(intent) {
 		return fail([]DataUsageViolation{{"intent_exceeds_license", "Missing intent signature"}}), nil
 	}
+	sig, _ := signatureOf(intent, "signature")
 	c, err := canonicalOf(without(intent, []string{"signature"}))
 	if err != nil {
 		return DataIntentVerification{}, err

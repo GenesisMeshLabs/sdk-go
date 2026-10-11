@@ -99,26 +99,18 @@ jobs:
             # The contents API is read fresh; raw.githubusercontent.com caches VERSION for minutes after a core merge.
             # A pull request is checked against the core branch of the same name when it
             # exists: the core's release/X.Y.Z while the train's release PRs are open, so
-            # they pass together. The core still merges first: a push to main or a tag
-            # build reads the core's main, and a tag must also match a core tag.
+            # they pass together. The core still merges first: a push to main reads the
+            # core's main. This workflow does not run on tags; publish.yml checks a tag,
+            # which must also match a core tag.
             core_ref=main
             if [ -n "${GITHUB_HEAD_REF:-}" ] && git ls-remote --exit-code --heads https://github.com/GenesisMeshLabs/genesismesh.git "refs/heads/$GITHUB_HEAD_REF" > /dev/null; then
               core_ref="$GITHUB_HEAD_REF"
             fi
-            core="$(curl -fsSL --retry 3 -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/GenesisMeshLabs/genesismesh/contents/VERSION?ref=$core_ref" | tr -d '[:space:]')"
+            ref_query="$(jq -rn --arg ref "$core_ref" '$ref | @uri')"
+            core="$(curl -fsSL --retry 3 -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github.raw" "https://api.github.com/repos/GenesisMeshLabs/genesismesh/contents/VERSION?ref=$ref_query" | tr -d '[:space:]')"
             if [ "$(printf '%s\n%s\n' "$version" "$core" | sort -V | tail -n 1)" != "$core" ]; then
               echo "::error::Version $version is ahead of the Genesis Mesh core ($core). The core leads every coordinated version; see genesismesh docs/development/versioning.md."
               exit 1
-            fi
-            if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-              if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
-                echo "::error::Tag $GITHUB_REF_NAME does not match version $version."
-                exit 1
-              fi
-              if [ "$version" != "$core" ] && ! git ls-remote --exit-code --tags https://github.com/GenesisMeshLabs/genesismesh.git "refs/tags/v$version" > /dev/null; then
-                echo "::error::Release $version is not a Genesis Mesh core version (core is $core). Release the core first."
-                exit 1
-              fi
             fi
             echo "Release train verified: $version (core $core)"
 

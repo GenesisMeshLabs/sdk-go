@@ -34,8 +34,9 @@ jobs:
                 echo "::error::Tag $GITHUB_REF_NAME does not match version $version."
                 exit 1
               fi
-              if [ "$version" != "$core" ] && ! git ls-remote --exit-code --tags https://github.com/GenesisMeshLabs/genesismesh.git "refs/tags/v$version" > /dev/null; then
-                echo "::error::Release $version is not a Genesis Mesh core version (core is $core). Release the core first."
+              # The core's tag must exist, also when its main already names this version.
+              if ! git ls-remote --exit-code --tags https://github.com/GenesisMeshLabs/genesismesh.git "refs/tags/v$version" > /dev/null; then
+                echo "::error::Genesis Mesh core v$version is not tagged (core main is $core). Release the core first."
                 exit 1
               fi
             fi
@@ -63,11 +64,18 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+      # The release notes are the version's CHANGELOG.md section, as in the other SDKs.
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --generate-notes
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "Release $tag already exists"
+            exit 0
+          fi
+          awk -v v="$version" '/^## /{ if (p) exit; if (index($0, "[" v "]") || index($0, "## " v " ")) p = 1; next } p' CHANGELOG.md > release-notes.md
+          [ -s release-notes.md ] || echo "Coordinated Genesis Mesh $tag release." > release-notes.md
+          gh release create "$tag" --title "$tag" --notes-file release-notes.md --verify-tag
