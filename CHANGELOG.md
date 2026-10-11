@@ -7,6 +7,33 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.3.1] - 2026-10-11
+
+### Fixed
+
+- Client responses are read with keys matched in their own case only.
+  `encoding/json` reads a key in another case into a field, so
+  `{"authorized":false,"Authorized":true}` read as an authorized decision,
+  where every other implementation reads `Authorized` as a key it does not
+  know. Such keys are now dropped, at any depth, before a response is
+  decoded: decisions, agreements, evidence, attestations, policies and
+  intents. `AgreementRecord.Capabilities` reads `capabilities` in the agreed
+  terms in its own case only.
+- An integer longer than 20 digits is refused as `integer_out_of_range`
+  before it is parsed, as the reference does. A response or record holding
+  an integer of millions of digits took seconds to refuse.
+- `VerifyBoundaryDecision` answers `missing_signature` only when the
+  signature is absent or `null`, as the reference does. A signature of
+  another shape (`{"sig": ""}`, a string, a list) is `invalid_signature`,
+  and an expired decision with one is `decision_expired`. Likewise
+  `VerifyDataAccessIntent` reports `Missing intent signature` only for an
+  absent or `null` signature, and `Invalid intent signature` otherwise.
+- A decision whose `decision_valid_until` does not parse is no longer an
+  error before its signature and form are checked. It is refused as
+  `invalid_signature`, `unknown_field` or `non_canonical_form` when one of
+  them applies, as the reference refuses it; the parse error is returned
+  only when none does, so such a decision is never accepted.
+
 ## [1.3.0] - 2026-10-10
 
 ### Changed
