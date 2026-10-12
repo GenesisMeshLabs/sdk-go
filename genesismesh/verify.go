@@ -140,7 +140,8 @@ func AttestationDigest(attestationJSON []byte) (string, error) {
 	return sha256Hex(c), err
 }
 
-// PolicyDigest returns BoundaryPolicy.digest(): SHA-256 of the canonical body without the signature.
+// PolicyDigest returns BoundaryPolicy.digest(): SHA-256 of the canonical body
+// without the signature, the 1.4.0 sections left out when null.
 func PolicyDigest(policyJSON []byte) (string, error) {
 	obj, err := decodeObject(policyJSON, "boundary policy")
 	if err != nil {
@@ -149,8 +150,14 @@ func PolicyDigest(policyJSON []byte) (string, error) {
 	return policyDigestOf(obj)
 }
 
+// policyOmittedWhenAbsent are the policy sections left out of the signed form
+// when null (v1.4.0: remediation guidance, the review requirement and the
+// emergency capability), so a policy without them keeps its 1.3 digest
+// (checked against the field registry).
+var policyOmittedWhenAbsent = []string{"remediation", "review_required", "emergency"}
+
 func policyDigestOf(obj object) (string, error) {
-	c, err := canonicalOf(without(obj, []string{"signature"}))
+	c, err := canonicalOf(without(obj, []string{"signature"}, policyOmittedWhenAbsent...))
 	return sha256Hex(c), err
 }
 

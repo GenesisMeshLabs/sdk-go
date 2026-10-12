@@ -68,6 +68,89 @@ func TestCanonicalRulesEqualTheRegistrys(t *testing.T) {
 	if got := canonicalRegistry.Models["AgreementRecord"].CanonicalFields; !reflect.DeepEqual(agreementCanonicalFields, got) {
 		t.Errorf("agreementCanonicalFields %v, registry %v", agreementCanonicalFields, got)
 	}
+	if got := canonicalRegistry.Models["BoundaryPolicy"].OmitWhenNone; !reflect.DeepEqual(policyOmittedWhenAbsent, got) {
+		t.Errorf("policyOmittedWhenAbsent %v, registry %v", policyOmittedWhenAbsent, got)
+	}
+}
+
+// The reference's BoundaryPolicy.digest() of the field registry's
+// "boundarypolicy-guided" record (v1.4.0); without the new sections it is the
+// digest bd-001 binds.
+const guidedPolicyDigest = "768bdcfaadfbd0bd434a86990c6567c23bee8978aafa75a5ed88ef2d2e54cb95"
+
+func TestAPolicyWithoutTheStage3SectionsKeepsItsDigest(t *testing.T) {
+	// v1.4.0: remediation, review_required and emergency are left out when
+	// absent, so null reads as absent and a 1.3 policy keeps its digest.
+	bd := interopVector(t, "bd-001")
+	var policies []json.RawMessage
+	if err := json.Unmarshal(bd.Input["expected_policies"], &policies); err != nil {
+		t.Fatal(err)
+	}
+	bound := "7921f8ac5dccd5cfb09489e69ca1d0325158e7b457de65a7fc4563af7f7b8601"
+	if got, err := PolicyDigest(policies[0]); err != nil || got != bound {
+		t.Fatalf("1.3 policy: %s %v", got, err)
+	}
+	nulls := withValue(t, policies[0], "remediation", nil)
+	nulls["review_required"] = nil
+	nulls["emergency"] = nil
+	raw, err := json.Marshal(nulls)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := PolicyDigest(raw); err != nil || got != bound {
+		t.Fatalf("policy with null sections: %s %v", got, err)
+	}
+	now, _ := ParseTimestamp(text(t, bd.Input["now"]))
+	got, err := VerifyBoundaryDecision(bd.Input["decision"], DecisionVerifyOptions{
+		OperatorPublicKeys: strings_(t, bd.Input["operator_public_keys"]), Now: now,
+		ExpectedPolicies: [][]byte{raw},
+	})
+	if err != nil || !got.Accepted || got.Reason != "authorized" {
+		t.Fatalf("decision against the policy with null sections: %+v %v", got, err)
+	}
+	if got, err := PolicyDigest(registryVector(t, "boundarypolicy-guided").Record); err != nil || got != guidedPolicyDigest {
+		t.Fatalf("guided policy: %s %v", got, err)
+	}
+}
+
+func TestADecisionUnderAPolicyWithTheStage3SectionsVerifiesOffline(t *testing.T) {
+	// v1.4.0: a policy with remediation guidance, a review requirement and an
+	// emergency section is known to this SDK, and binds by its digest.
+	bd := interopVector(t, "bd-001")
+	guided := registryVector(t, "boundarypolicy-guided").Record
+	decision, err := decodeObject(bd.Input["decision"], "decision")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding := decision["policy_binding"].(map[string]interface{})
+	applied := binding["policies"].([]interface{})[0].(map[string]interface{})
+	applied["policy_digest"] = guidedPolicyDigest
+	setDigest, err := PolicySetDigest([]AppliedPolicyRef{{str(applied, "policy_id"), applied["version"].(json.Number), guidedPolicyDigest}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding["policy_set_digest"] = setDigest
+	keys := strings_(t, bd.Input["operator_public_keys"])
+	raw := resigned(t, decision, conformanceKey(t, keys), decisionOmittedWhenAbsent...)
+	now, _ := ParseTimestamp(text(t, bd.Input["now"]))
+	opts := DecisionVerifyOptions{OperatorPublicKeys: keys, Now: now, ExpectedPolicies: [][]byte{guided}}
+	got, err := VerifyBoundaryDecision(raw, opts)
+	if err != nil || !got.Accepted || got.Reason != "authorized" {
+		t.Fatalf("decision under the guided policy: %+v %v", got, err)
+	}
+
+	var policies []json.RawMessage
+	if err := json.Unmarshal(bd.Input["expected_policies"], &policies); err != nil {
+		t.Fatal(err)
+	}
+	opts.ExpectedPolicies = [][]byte{policies[0]}
+	if got, err := VerifyBoundaryDecision(raw, opts); err != nil || got.Reason != "policy_binding_mismatch" {
+		t.Fatalf("the sections are signed: %+v %v", got, err)
+	}
+	opts.ExpectedPolicies = [][]byte{withField(t, guided, "x_added_field")}
+	if got, err := VerifyBoundaryDecision(raw, opts); err != nil || got.Reason != "unknown_field" {
+		t.Fatalf("an unknown field beside them: %+v %v", got, err)
+	}
 }
 
 func TestConformanceFieldRegistryVectors(t *testing.T) {
