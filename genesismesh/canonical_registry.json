@@ -122,6 +122,8 @@
         "from_sequence": null,
         "issued_by": null,
         "pack_id": null,
+        "period_from": "timestamp",
+        "period_until": "timestamp",
         "requested_by": null,
         "signature": {
           "object": "Signature"
@@ -134,7 +136,9 @@
       "signature_field": "signature",
       "omit_when_none": [
         "requested_by",
-        "start_anchor_sequence"
+        "start_anchor_sequence",
+        "period_from",
+        "period_until"
       ]
     },
     "BootstrapAnchor": {
@@ -675,6 +679,35 @@
       "omit_when_none": [
         "resource_id"
       ]
+    },
+    "RecognitionTreaty": {
+      "fields": {
+        "expires_at": "timestamp",
+        "issued_at": "timestamp",
+        "issued_by": null,
+        "issuer_sovereign_id": null,
+        "metadata": "open",
+        "scope": {
+          "object": "RecognitionTreatyScope"
+        },
+        "signatures": {
+          "list": "Signature"
+        },
+        "status": null,
+        "subject_public_keys": null,
+        "subject_sovereign_id": null,
+        "treaty_id": null,
+        "valid_from": "timestamp"
+      },
+      "root": true,
+      "signature_field": "signatures"
+    },
+    "RecognitionTreatyScope": {
+      "fields": {
+        "accepted_statuses": null,
+        "allowed_roles": null,
+        "claims": "open"
+      }
     },
     "RegistryRecord": {
       "fields": {
