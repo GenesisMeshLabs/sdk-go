@@ -257,14 +257,61 @@ func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, 
 	return result(true, "accepted"), nil
 }
 
+// VerifyAgreementWithKeyHistory (v1.5.0) checks an AgreementRecord as
+// VerifyAgreement does, each party's keys being those of its key history
+// valid at the agreement's agreed_terms.valid_from (signed; established_at is
+// not) and still accepted at now (zero: time.Now()): an agreement a succeeded
+// key signed stops vouching when that key's hand-over ends. Use
+// NAKeysValidAlways for a party whose history the verifier does not hold. A
+// signature by a key of a party's history that is not valid then fails as
+// that party's invalid signature, as in the reference.
+func VerifyAgreementWithKeyHistory(agreementJSON []byte, offerer, responder *NAKeyHistory, expectedGraphDigest string, now time.Time) (AgreementVerification, error) {
+	if offerer == nil || responder == nil {
+		return AgreementVerification{}, fmt.Errorf("genesismesh: both parties' key histories are required")
+	}
+	obj, err := decodeObject(agreementJSON, "agreement")
+	if err != nil {
+		return AgreementVerification{}, err
+	}
+	terms, _ := obj["agreed_terms"].(map[string]interface{})
+	at, err := ParseTimestamp(str(terms, "valid_from"))
+	if err != nil {
+		return AgreementVerification{}, fmt.Errorf("genesismesh: agreed_terms.valid_from: %w", err)
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	vouching := func(h *NAKeyHistory) []string {
+		current := h.KeysAt(now)
+		out := []string{}
+		for _, k := range h.KeysAt(at) {
+			if containsString(current, k) {
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+	return VerifyAgreement(agreementJSON, vouching(offerer), vouching(responder), expectedGraphDigest)
+}
+
 // ── boundary decisions ─────────────────────────────────────────────────────
 
 // DecisionVerifyOptions configures VerifyBoundaryDecision.
 type DecisionVerifyOptions struct {
 	// OperatorPublicKeys are the NA keys that may sign decisions.
 	OperatorPublicKeys []string
+	// KeyHistory (v1.5.0), instead of OperatorPublicKeys, is the NA's verified
+	// key history (VerifyKeyHistory): the decision must be signed by the key
+	// valid at its decision_made_at ("na_key_not_valid_at_time" for another
+	// key of the history), and expire no later than that key's end, the
+	// hand-over and MaxDecisionLifetime ("decision_outlives_key").
+	KeyHistory *NAKeyHistory
 	// Now is the verification time (zero: time.Now()).
 	Now time.Time
+	// AtRecordTime (v1.5.0) judges the decision as of its own time
+	// (decision_made_at) rather than Now: an archived decision was valid when
+	// it was made, and its expiry since then says nothing against it.
+	AtRecordTime bool
 	// FreshnessProofIssuerKeys, when set, must verify an embedded freshness proof.
 	FreshnessProofIssuerKeys []string
 	// ExpectedPolicies (signed BoundaryPolicy JSON), when non-nil, must equal the decision's policy binding.
@@ -290,6 +337,9 @@ var builtinGateNames = map[string]bool{
 
 // VerifyBoundaryDecision checks a BoundaryDecision's signature, expiry and bindings offline.
 func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (DecisionVerification, error) {
+	if opts.KeyHistory != nil && len(opts.OperatorPublicKeys) > 0 {
+		return DecisionVerification{}, fmt.Errorf("genesismesh: pass OperatorPublicKeys or KeyHistory, not both")
+	}
 	d, err := decodeObject(decisionJSON, "boundary decision")
 	if err != nil {
 		return DecisionVerification{}, err
@@ -306,21 +356,33 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		return reject("missing_signature")
 	}
 	sig, _ := signatureOf(d, "signature")
+	// v1.5.0: the decision's own time, for the key history and AtRecordTime.
+	madeAt, madeErr := ParseTimestamp(str(d, "decision_made_at"))
+	needsMadeAt := opts.KeyHistory != nil || opts.AtRecordTime
 	now := opts.Now
 	if now.IsZero() {
 		now = time.Now()
 	}
+	if opts.AtRecordTime {
+		now = madeAt
+	}
 	// v1.3.1: an expiry that does not parse is left to the signature and form
 	// checks, as in the reference; when they pass, its error is returned.
 	validUntil, expiryErr := ParseTimestamp(str(d, "decision_valid_until"))
-	if expiryErr == nil && now.After(validUntil) {
+	if expiryErr == nil && !(opts.AtRecordTime && madeErr != nil) && now.After(validUntil) {
 		return reject("decision_expired")
 	}
 	canonical, err := canonicalOf(without(d, []string{"signature"}, decisionOmittedWhenAbsent...))
 	if err != nil {
 		return DecisionVerification{}, err
 	}
-	if !verifyEd25519(canonical, sig, opts.OperatorPublicKeys) {
+	// v1.5.0: with a key history, any key of it first; the key valid at
+	// decision_made_at after the form checks, as the reference orders them.
+	keys := opts.OperatorPublicKeys
+	if opts.KeyHistory != nil {
+		keys = opts.KeyHistory.AllKeys()
+	}
+	if !verifyEd25519(canonical, sig, keys) {
 		return reject("invalid_signature")
 	}
 	// v1.2.0: an authentic decision with a signed field this SDK does not know, or expected
@@ -344,6 +406,26 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 	}
 	if expiryErr != nil {
 		return DecisionVerification{}, expiryErr
+	}
+	if needsMadeAt && madeErr != nil {
+		return DecisionVerification{}, madeErr
+	}
+	if opts.KeyHistory != nil {
+		signer := ""
+		for _, k := range opts.KeyHistory.KeysAt(madeAt) {
+			if verifyEd25519(canonical, sig, []string{k}) {
+				signer = k
+				break
+			}
+		}
+		// v1.5.0: signed by a key of the NA's history, but not the one valid when the decision was made.
+		if signer == "" {
+			return reject("na_key_not_valid_at_time")
+		}
+		// v1.5.0: valid longer than the key that signed it may vouch for.
+		if opts.KeyHistory.decisionOutlivesKey(signer, validUntil) {
+			return reject("decision_outlives_key")
+		}
 	}
 
 	if proof, ok := d["freshness_proof"].(map[string]interface{}); ok && len(opts.FreshnessProofIssuerKeys) > 0 {
