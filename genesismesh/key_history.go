@@ -20,6 +20,10 @@ package genesismesh
 //   - A succeeded key is still accepted for records dated up to
 //     SuccessionHandover after the next key took effect.
 //
+// A key with an end (a succeeded key, or one with an enforced valid_to)
+// vouches for a decision only while the decision expires no later than that
+// end, the hand-over and MaxDecisionLifetime (decision_outlives_key).
+//
 // Without a key history every verifier behaves as before: a list of NA keys
 // is valid at every time.
 
@@ -38,6 +42,33 @@ import (
 // outgoing key is still accepted (records signed just before the hand-over
 // and stored just after it).
 const SuccessionHandover = 300 * time.Second
+
+// MaxDecisionLifetime is the longest lifetime of a decision the NA issues
+// (v1.5.0): a decision signed by a key with an end is refused when it stays
+// valid past that end, the hand-over and this lifetime
+// ("decision_outlives_key"), so the holder of a succeeded key cannot mint a
+// long-lived decision dated inside its window.
+const MaxDecisionLifetime = 300 * time.Second
+
+// NARecordTimeFields is the field giving the time an NA-signed record read
+// alone is placed at in the key history (v1.5.0): the key that may sign it is
+// the key valid then. In the evidence store every entry is placed at its
+// envelope's recorded_at instead.
+var NARecordTimeFields = map[string]string{
+	"ArchiveRecord":         "archived_at",
+	"AuditPackManifest":     "created_at",
+	"BoundaryDecision":      "decision_made_at",
+	"BoundaryPolicy":        "issued_at",
+	"JudgementRecord":       "judged_at",
+	"JustificationProof":    "proof_issued_at",
+	"MembershipAttestation": "issued_at",
+	"QuarantineRecord":      "quarantined_at",
+	"RecognitionTreaty":     "issued_at",
+	"RegistryRecord":        "effective_at",
+	"RetentionCheckpoint":   "created_at",
+	"ReviewRecord":          "decided_at",
+	"StoreAnchor":           "anchored_at",
+}
 
 // NAKey is one key of an NA's key history and the times it is valid at.
 type NAKey struct {
@@ -111,15 +142,32 @@ func (h *NAKeyHistory) KeysAt(at time.Time) []string {
 	return out
 }
 
-// othersThan returns the history's keys not in keys.
-func (h *NAKeyHistory) othersThan(keys []string) []string {
-	var out []string
-	for _, k := range h.AllKeys() {
-		if !containsString(keys, k) {
-			out = append(out, k)
+// keyFor returns the key of the history with this public key, nil when none.
+func (h *NAKeyHistory) keyFor(publicKey string) *NAKey {
+	for i := range h.Keys {
+		if h.Keys[i].PublicKey == publicKey {
+			return &h.Keys[i]
 		}
 	}
-	return out
+	return nil
+}
+
+// decisionOutlivesKey reports whether a decision signed by publicKey stays
+// valid past what that key may vouch for: its end (its succession, or its
+// enforced valid_to), the hand-over and MaxDecisionLifetime.
+func (h *NAKeyHistory) decisionOutlivesKey(publicKey string, validUntil time.Time) bool {
+	k := h.keyFor(publicKey)
+	if k == nil {
+		return false
+	}
+	var end *time.Time
+	if k.SucceededAt != nil {
+		end = k.SucceededAt
+	}
+	if k.ValidToEnforced && k.ValidTo != nil && (end == nil || k.ValidTo.Before(*end)) {
+		end = k.ValidTo
+	}
+	return end != nil && validUntil.After(end.Add(SuccessionHandover+MaxDecisionLifetime))
 }
 
 // KeyHistoryVerification is the outcome of VerifyKeyHistory. When Verified
@@ -195,6 +243,10 @@ func verifyKeyHistory(genesis interface{}, successions []interface{}, root strin
 	}
 	if str(block, "root_public_key") != root {
 		return fail(1, "genesis_root_mismatch")
+	}
+	// v1.5.0 review fixes: strict like every other signed root.
+	if reason := strictRefusal("GenesisBlock", block, []string{root}); reason == "unknown_field" || reason == "non_canonical_form" {
+		return fail(1, reason)
 	}
 	if !signedAsReceived("GenesisBlock", block, []string{root}) {
 		return fail(1, "genesis_invalid_signature")
@@ -309,34 +361,33 @@ type succession struct {
 	keySequence                                      int
 	previousKeyID, previousPublicKey, previousDigest string
 	newKeyID, newPublicKey, digest                   string
-	effectiveAt, newValidTo                          time.Time
+	effectiveAt, newValidTo, issuedAt                time.Time
 }
 
 // successionRefusal returns the parsed record (nil when it does not parse)
-// and why it is refused, "" when it is accepted, in the reference order.
+// and why it is refused, "" when it is accepted, in the reference order
+// (v1.5.0 review fixes): payload_invalid; unknown_field or
+// invalid_signature, non_canonical_form; succession_sovereign_mismatch,
+// succession_chain_break, succession_key_reused (the root key included),
+// succession_backdated, succession_not_increasing, succession_after_expiry;
+// then the root key's, the new key's and the outgoing key's signatures.
 func successionRefusal(raw interface{}, previous NAKey, previousDigest, sovereign, root string, held []NAKey) (*succession, string) {
 	const model = "KeySuccessionRecord"
 	obj, isObject := raw.(map[string]interface{})
 	if !isObject {
 		return nil, "payload_invalid"
 	}
-	signers := []string{root, previous.PublicKey}
-	if hasUnknownFields(model, obj) {
-		// Signed over a field this release does not know, or not signed as received.
-		if !signedAsReceived(model, obj, signers) {
-			return nil, "invalid_signature"
-		}
-		return nil, "unknown_field"
-	}
+	// Parsed with its unknown fields set aside.
 	record, ok := parseSuccession(obj)
 	if !ok {
 		return nil, "payload_invalid"
 	}
-	if len(nonCanonicalFields(model, obj)) > 0 {
-		if !signedAsReceived(model, obj, signers) {
-			return record, "invalid_signature"
-		}
-		return record, "non_canonical_form"
+	signers := []string{root, previous.PublicKey}
+	if validPublicKey(record.newPublicKey) {
+		signers = append(signers, record.newPublicKey)
+	}
+	if reason := strictRefusal(model, obj, signers); reason != "" {
+		return record, reason
 	}
 	if str(obj, "sovereign_id") != sovereign {
 		return record, "succession_sovereign_mismatch"
@@ -345,13 +396,16 @@ func successionRefusal(raw interface{}, previous NAKey, previousDigest, sovereig
 		record.previousDigest != previousDigest {
 		return record, "succession_chain_break"
 	}
-	if !validPublicKey(record.newPublicKey) {
+	if !validPublicKey(record.newPublicKey) || record.newPublicKey == root {
 		return record, "succession_key_reused"
 	}
 	for _, k := range held {
 		if k.PublicKey == record.newPublicKey {
 			return record, "succession_key_reused"
 		}
+	}
+	if record.issuedAt.After(record.effectiveAt) {
+		return record, "succession_backdated"
 	}
 	if (previous.ValidFrom != nil && !record.effectiveAt.After(*previous.ValidFrom)) ||
 		!record.newValidTo.After(record.effectiveAt) {
@@ -363,14 +417,37 @@ func successionRefusal(raw interface{}, previous NAKey, previousDigest, sovereig
 	if !signedAsReceived(model, obj, []string{root}) {
 		return record, "succession_invalid_root_signature"
 	}
+	// The new key's signature proves it exists and is held.
+	if !signedAsReceived(model, obj, []string{record.newPublicKey}) {
+		return record, "succession_invalid_new_key_signature"
+	}
 	if !signedAsReceived(model, obj, []string{previous.PublicKey}) {
 		return record, "succession_invalid_previous_signature"
 	}
 	return record, ""
 }
 
-// parseSuccession reads a KeySuccessionRecord as the reference validates it
-// (otherwise payload_invalid).
+// strictRefusal returns why a record must be refused for its form, "" when
+// it need not be: with a field this release does not know, or not in
+// canonical form, "unknown_field" or "non_canonical_form" when a signature
+// by one of signers verifies over it as received, "invalid_signature"
+// otherwise.
+func strictRefusal(model string, obj object, signers []string) string {
+	unknown := hasUnknownFields(model, obj)
+	if !unknown && len(nonCanonicalFields(model, obj)) == 0 {
+		return ""
+	}
+	if !signedAsReceived(model, obj, signers) {
+		return "invalid_signature"
+	}
+	if unknown {
+		return "unknown_field"
+	}
+	return "non_canonical_form"
+}
+
+// parseSuccession reads a KeySuccessionRecord as the reference validates it,
+// its unknown fields set aside (otherwise payload_invalid).
 func parseSuccession(obj object) (*succession, bool) {
 	text := func(key string, min, max int) (string, bool) {
 		s, ok := obj[key].(string)
@@ -411,7 +488,7 @@ func parseSuccession(obj object) (*succession, bool) {
 		return nil, false
 	}
 	r.keySequence = int(seq)
-	for key, dst := range map[string]*time.Time{"effective_at": &r.effectiveAt, "new_valid_to": &r.newValidTo, "issued_at": nil} {
+	for key, dst := range map[string]*time.Time{"effective_at": &r.effectiveAt, "new_valid_to": &r.newValidTo, "issued_at": &r.issuedAt} {
 		t, err := time.Parse(time.RFC3339Nano, str(obj, key))
 		if err != nil {
 			return nil, false
@@ -419,9 +496,7 @@ func parseSuccession(obj object) (*succession, bool) {
 		if _, offset := t.Zone(); offset != 0 {
 			return nil, false
 		}
-		if dst != nil {
-			*dst = t.UTC()
-		}
+		*dst = t.UTC()
 	}
 	if v, present := obj["signatures"]; present {
 		list, ok := v.([]interface{})
