@@ -6,7 +6,7 @@ Go SDK for the Genesis Mesh Network Authority HTTP API.
 
 ## Scope
 
-This SDK (1.4) covers the Network Authority's trust API: the sub-clients
+This SDK (1.5) covers the Network Authority's trust API: the sub-clients
 below (agreements, boundary decisions, trust evidence, attestations,
 selective disclosure, consensus and data usage), offline verification of
 their signed records, and signed admin calls to any other route. It has no
@@ -19,6 +19,13 @@ APIs (remediation records, the due queue, reviews). Those live in the
 registry lists their records, but this SDK does not verify evidence exports.
 A boundary policy with the 1.4.0 sections (`remediation`, `review_required`,
 `emergency`) verifies here like any other.
+
+From 1.5 it reads the NA's key history (see
+[NA key history](#na-key-history)), so decisions and agreements signed before
+and after a key succession keep verifying. Audit packs, archives and their
+verification are not part of this SDK: they live in the core
+(`genesis-mesh audit pack`, `genesis-mesh audit verify`) and in the Rust
+SDK's independent verifier `genesis-mesh-verify`.
 
 ## Install
 
@@ -246,6 +253,40 @@ v, err := genesismesh.VerifyDataAccessIntent(intentJSON, policyJSON, []string{ag
 
 An accepted DENY has `Accepted` true and `Authorized` false: the decision
 verified, and it denies. Revocation is not checked offline.
+
+### NA key history
+
+From 1.5.0 a Network Authority can move to a new signing key (a key
+succession, signed by its offline root key and by the outgoing key). Pass the
+NA's key history and a record must carry the signature of the key valid at
+the record's own time: a decision's `decision_made_at`, an agreement's
+`established_at`. A succeeded key is still accepted for 300 seconds after the
+next key takes effect (`SuccessionHandover`). Without a history nothing
+changes: a list of keys is valid at every time.
+
+```go
+// The body of GET /na/key-history, checked from the root key you hold out of band.
+h, err := genesismesh.VerifyKeyHistoryResponse(body, rootPublicKey)
+// h.Verified; otherwise h.Reason ("genesis_root_mismatch", "succession_chain_break", ...)
+// and h.KeySequence, the refused record's position.
+
+d, err := genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionVerifyOptions{
+	KeyHistory:   h.History, // instead of OperatorPublicKeys
+	AtRecordTime: true,      // optional: an archived decision, judged as of decision_made_at
+})
+// d.Reason "na_key_not_valid_at_time": signed by a key of the history, but not the one valid then.
+
+a, err := genesismesh.VerifyAgreementWithKeyHistory(agreementJSON, h.History,
+	genesismesh.NAKeysValidAlways([]string{responderKey}), "")
+```
+
+`VerifyKeyHistory(genesisJSON, successionsJSON, rootPublicKey)` takes the
+genesis block and the succession records directly. The refusal reasons and
+their order are the reference's: `genesis_invalid`, `genesis_root_mismatch`,
+`genesis_invalid_signature`, then for each succession `payload_invalid`,
+`invalid_signature`, `unknown_field`, `non_canonical_form` and the
+`succession_*` reasons. The SDK runs the key history vectors of the shared
+`audit` suite (`genesismesh/testdata/conformance/audit.json`).
 `CanonicalJSON`, `PolicyDigest`, `AttestationDigest` and `PolicySetDigest`
 reproduce the reference forms. The verifiers pass the shared `interop`
 conformance vectors (`genesismesh/testdata/conformance/interop.json`), and the
