@@ -51,14 +51,17 @@ const SuccessionHandover = 300 * time.Second
 const MaxDecisionLifetime = 300 * time.Second
 
 // NARecordTimeFields is the field giving the time an NA-signed record read
-// alone is placed at in the key history (v1.5.0): the key that may sign it is
-// the key valid then. In the evidence store every entry is placed at its
-// envelope's recorded_at instead.
+// alone is placed at in the key history (v1.5.0; from v1.6.0 also a grant,
+// its revocation and a time token, read alone or nested in a use): the key
+// that may sign it is the key valid then. In the evidence store every entry
+// is placed at its envelope's recorded_at instead.
 var NARecordTimeFields = map[string]string{
 	"ArchiveRecord":         "archived_at",
 	"AuditPackManifest":     "created_at",
 	"BoundaryDecision":      "decision_made_at",
 	"BoundaryPolicy":        "issued_at",
+	"CapabilityGrant":       "issued_at",
+	"GrantRevocationRecord": "revoked_at",
 	"JudgementRecord":       "judged_at",
 	"JustificationProof":    "proof_issued_at",
 	"MembershipAttestation": "issued_at",
@@ -68,6 +71,7 @@ var NARecordTimeFields = map[string]string{
 	"RetentionCheckpoint":   "created_at",
 	"ReviewRecord":          "decided_at",
 	"StoreAnchor":           "anchored_at",
+	"TimeToken":             "issued_at",
 }
 
 // NAKey is one key of an NA's key history and the times it is valid at.
