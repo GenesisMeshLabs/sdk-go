@@ -6,7 +6,7 @@ Go SDK for the Genesis Mesh Network Authority HTTP API.
 
 ## Scope
 
-This SDK (1.5) covers the Network Authority's trust API: the sub-clients
+This SDK (1.6) covers the Network Authority's trust API: the sub-clients
 below (agreements, boundary decisions, trust evidence, attestations,
 selective disclosure, consensus and data usage), offline verification of
 their signed records, and signed admin calls to any other route. It has no
@@ -26,6 +26,14 @@ and after a key succession keep verifying. Audit packs, archives and their
 verification are not part of this SDK: they live in the core
 (`genesis-mesh audit pack`, `genesis-mesh audit verify`) and in the Rust
 SDK's independent verifier `genesis-mesh-verify`.
+
+From 1.6 it checks a pre-issued grant's NA signature (see
+[Pre-issued grants](#pre-issued-grants)). Requesting grants, holding time
+tokens, acting within a grant offline, recording its uses and falling back to
+break-glass live in the
+[TypeScript SDK](https://github.com/GenesisMeshLabs/sdk-typescript) and the
+[Rust SDK](https://github.com/GenesisMeshLabs/sdk-rust), as does verifying
+grants, their uses and revocations in an evidence export.
 
 ## Install
 
@@ -298,6 +306,27 @@ the outgoing key's. The SDK runs the key history vectors of the shared
 reproduce the reference forms. The verifiers pass the shared `interop`
 conformance vectors (`genesismesh/testdata/conformance/interop.json`), and the
 core's cross-language scenario runs them against a live NA.
+
+### Pre-issued grants
+
+From 1.6.0 the NA can issue a `CapabilityGrant` before the bearer acts, so
+the bearer can act within it while the NA is unreachable. Grants are off
+unless the NA runs with `EVIDENCE_GRANTS=on`. `VerifyCapabilityGrant` checks
+that a grant is the NA's: signed by the key of its key history valid at the
+grant's `issued_at`, with every signed field known and in canonical form.
+
+```go
+g, err := genesismesh.VerifyCapabilityGrant(grantJSON, h.History) // or NAKeysValidAlways([]string{naKey})
+// g.Valid; otherwise g.Reason: "missing_signature", "invalid_signature", "unknown_field",
+// "non_canonical_form" or "na_key_not_valid_at_time".
+```
+
+It does not check the grant's validity, budget, parameter envelope or
+revocation. The NA's revocation feed lists revoked grants in
+`revoked_grant_ids` while grants are on (left out while they are off); the
+embedded field registry knows both forms. The SDK runs the signed-form and
+signature vectors of the shared `grants` suite
+(`genesismesh/testdata/conformance/grants.json`).
 
 ## Raw admin calls
 
