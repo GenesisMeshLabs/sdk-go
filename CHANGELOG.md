@@ -7,7 +7,7 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
-## [1.7.0] - 2026-10-14
+## [1.7.0] - 2026-10-15
 
 ### Changed
 
