@@ -7,6 +7,13 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.7.0] - 2026-10-15
+
+### Changed
+
+- Released with Genesis Mesh 1.7.0 (the edge agent). Nothing changes in this SDK: 1.7.0 adds no signed record
+  kind, so it verifies everything a 1.7.0 Network Authority signs, as 1.6.0 did.
+
 ## [1.6.0] - 2026-10-14
 
 ### Added
