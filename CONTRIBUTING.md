@@ -9,7 +9,8 @@ the development environment, run tests, and submit changes.
 
 | Tool | Minimum version |
 |------|----------------|
-| Go | 1.22 |
+| Go | 1.22 (the `go.mod` minimum; CI also tests the two latest Go releases) |
+| Python | 3.12, for `scripts/` and the live contract test |
 
 ---
 
@@ -25,6 +26,8 @@ Verify the build and tests pass before making any changes:
 
 ```sh
 go build ./...
+go vet ./...
+test -z "$(gofmt -l .)"
 go test -race ./...
 ```
 
@@ -32,19 +35,22 @@ go test -race ./...
 
 ## Project structure
 
-Read [AGENT.md](AGENT.md) for the enforced layer rule before adding or changing
-source files. The short version:
+Read [AGENT.md](AGENT.md) for the full file layout and the layer rule before
+adding or changing source files. The short version:
 
 | File | What goes here |
 |------|---------------|
-| `genesismesh/auth.go` | Crypto only — canonical JSON, Ed25519 signing, admin headers |
-| `genesismesh/transport.go` | HTTP transport only — do, adminPost, publicPost, publicGet |
+| `genesismesh/auth.go` | Ed25519 keys and admin headers |
+| `genesismesh/transport.go` | HTTP transport only: do, adminPost, publicPost, publicGet |
 | `genesismesh/errors.go` | Typed error types only |
-| `genesismesh/types.go` | Protocol structs only — no methods, no functions |
-| `genesismesh/{domain}.go` | Sub-client — thin wrapper over transport |
+| `genesismesh/types.go` | Protocol structs, and the `UnmarshalJSON` methods that fill deprecated fields |
+| `genesismesh/{domain}.go` | Sub-client: thin wrapper over transport |
+| `genesismesh/canonical.go`, `strict_json.go`, `strict.go` | Canonical JSON, strict JSON, the field registry |
+| `genesismesh/verify.go`, `key_history.go`, `grants.go` | Offline verifiers of NA-signed records |
+| `genesismesh/testdata/conformance/` | Vector suites copied from the core (do not edit by hand) |
 
-Do not mix layers. A sub-client file must not contain crypto primitives.
-The auth module must not make HTTP calls.
+Do not mix layers. A sub-client file must not contain crypto primitives, and
+the verifiers and the auth module must not make HTTP calls.
 
 ---
 
@@ -91,7 +97,8 @@ Every public method needs tests in `genesismesh/client_test.go` (or a dedicated
 1. Happy-path — `httptest.NewServer` returns the correct shape
 2. URL — method calls the correct route path
 3. Auth — admin methods require a signing key (`ErrNoSigningKey` without one)
-4. Error — NA 4xx → typed SDK error with correct `.Code`
+4. Error — an NA error status → its typed SDK error with the correct `.Code`
+   (use a status and code the NA really sends)
 
 Use `httptest.NewServer` from the stdlib — no mocking library needed:
 
@@ -107,6 +114,15 @@ Run the full suite with race detection:
 ```sh
 go test -race ./...
 ```
+
+A bug fix comes with the test that fails without it: run the test against the
+code before your fix and see it fail. CI's `Regression test` check fails a
+pull request titled `fix: ...` that changes source files without changing a
+`*_test.go` file, unless the Maintainer labels it `no-test-needed`.
+
+After copying a new `field_registry.json` from the core, run
+`python scripts/sync_canonical_registry.py`; a test fails while the embedded
+registry differs from the suite.
 
 ---
 
@@ -126,7 +142,11 @@ Before adding a new sub-client method, check the constraints table in
 
 - Keep PRs focused — one feature or fix per PR
 - Include a test for every changed behaviour
-- Ensure `go build ./...` and `go test -race ./...` pass locally before opening the PR
+- Ensure `go build ./...`, `go vet ./...`, `gofmt -l .` and `go test -race ./...`
+  pass locally before opening the PR
+- Add a changelog fragment `changelog.d/<version>/<short-name>.md` (see
+  [changelog.d/README.md](changelog.d/README.md)); never edit `CHANGELOG.md`
+- A change callers must act on gets an `### Upgrading` section in its fragment
 - Fill in the PR template — the checklist exists for a reason
 
 If your change adds a new NA constraint discovered during testing, add it to
@@ -134,14 +154,20 @@ the **Known constraints** table in `AGENT.md`.
 
 ---
 
-## Smoke testing against a live NA
+## Live contract test against a real NA
 
-The unit tests use `httptest.NewServer`. To run against a real Network Authority:
+The unit tests use `httptest.NewServer`. The live contract test starts a
+disposable Network Authority (`scripts/contract_na.py`, which needs the
+`genesis-mesh` core installed in the Python you name) and checks every client
+method's typed result against the JSON the NA sent:
 
 ```sh
-cd ../sandbox/sdk-smoke-go
-go run ./smoke.go   # requires NA on http://127.0.0.1:9443
+pip install -e ../genesismesh
+GM_E2E_PYTHON=python go test -tags live -count=1 -run '^TestLiveContract$' ./genesismesh
 ```
+
+Without `GM_E2E_PYTHON` the test skips; with `GM_E2E_REQUIRED=1` (as in CI) it
+fails instead.
 
 ---
 

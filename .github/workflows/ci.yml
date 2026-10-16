@@ -5,28 +5,43 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The merge queue runs the required checks on the queued merge.
+  merge_group:
 
 permissions:
   contents: read
 
 jobs:
+  # The go.mod minimum and the two latest Go releases (oldstable, stable).
+  # The required check is the "Go" summary below, whose name never changes
+  # when the toolchains do.
   build-and-test:
-    name: Go ${{ matrix.go-version }}
+    name: Go (${{ matrix.toolchain }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.22", "1.23"]
+        include:
+          - toolchain: go.mod minimum
+            version_file: go.mod
+          - toolchain: oldstable
+            version: oldstable
+          - toolchain: stable
+            version: stable
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Go ${{ matrix.go-version }}
+      - name: Set up Go (${{ matrix.toolchain }})
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: ${{ matrix.version }}
+          go-version-file: ${{ matrix.version_file }}
           cache: true
+
+      - name: Go version
+        run: go version
 
       - name: Verify dependencies
         run: go mod verify
@@ -48,6 +63,21 @@ jobs:
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
+
+  # The stable required check over the toolchain matrix: it fails when any
+  # toolchain failed or was cancelled (a skipped matrix is not a pass).
+  go:
+    name: Go
+    if: always()
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every Go toolchain passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'to_entries | length > 0 and all(.value.result == "success")' > /dev/null
 
   # Every client method against a running Network Authority: each typed
   # result must model the JSON the NA sent (v1.0.2: most of them did not).
@@ -78,10 +108,20 @@ jobs:
         with:
           go-version: "1.23"
           cache: true
+      # Skipped is not green: GM_E2E_REQUIRED=1 makes the test fail rather
+      # than skip without an NA, and the step fails unless TestLiveContract
+      # itself ran and passed (a filter matching no test exits 0 in Go).
       - name: Typed results match a live Network Authority
-        run: go test -tags live -count=1 -run TestLiveContract ./genesismesh
+        run: |
+          set -o pipefail
+          go test -tags live -count=1 -v -run '^TestLiveContract$' ./genesismesh | tee live-contract.log
+          grep -q '^--- PASS: TestLiveContract ' live-contract.log || {
+            echo "::error::TestLiveContract did not run and pass"
+            exit 1
+          }
         env:
           GM_E2E_PYTHON: python
+          GM_E2E_REQUIRED: "1"
 
   release-train:
     runs-on: ubuntu-latest

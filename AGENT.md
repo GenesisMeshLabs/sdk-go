@@ -4,10 +4,18 @@ Guidance for AI coding agents and human contributors working inside the
 Genesis Mesh Go SDK.
 
 This SDK is a standalone module. It does **not** import from the Python main
-repo. It wraps the NA HTTP API surface documented in:
+repo. It has two halves:
 
-- `genesismesh/docs/sdk/go.md` — public reference
-- `genesismesh/docs/api/trust-http.md` — NA HTTP routes
+- an **offline verifier** (about two thirds of the code) of the records an NA
+  signs (decisions, agreements, policies, intents, the NA key history, grant
+  signatures), checked against conformance vectors copied from the core;
+- a **thin client** for the NA HTTP routes listed in the README.
+
+References in the core repository (`genesismesh`):
+
+- `README.md` of this repo — the SDK's reference and its scope
+- `docs/api/trust-http.md` — NA HTTP routes
+- `contract/public-surface.json` — routes, error codes and stability
 
 ---
 
@@ -15,24 +23,33 @@ repo. It wraps the NA HTTP API surface documented in:
 
 ```text
 sdk-go/
-  genesismesh/
-    auth.go        # canonicalJSON, LoadPrivateKey, BuildAdminHeaders (Ed25519)
-    transport.go   # HTTP transport — do, adminPost, publicPost, publicGet
-    errors.go      # GenesisMeshError + typed subclasses, parseErrorResponse
-    types.go       # Protocol structs (snake_case JSON tags, matching Pydantic models)
-    client.go      # Client entry point — 7 sub-clients over shared transport
-    agreement.go   # AgreementClient
-    attestation.go # AttestationClient
-    boundary.go    # BoundaryClient
-    consensus.go   # ConsensusClient
-    data_usage.go  # DataUsageClient
-    disclosure.go  # DisclosureClient
-    evidence.go    # EvidenceClient
-    auth_test.go
-    errors_test.go
-    client_test.go
-  go.mod
-  go.sum
+  genesismesh/                # one package
+    # HTTP client
+    client.go                 # Client entry point: 7 sub-clients over one transport
+    transport.go              # HTTP transport: do, adminPost, publicPost, publicGet;
+                              #   strict JSON and case-folded keys refused on responses
+    errors.go                 # typed errors (APIError), parseErrorResponse
+    types.go                  # protocol structs (snake_case JSON tags) and their UnmarshalJSON
+    agreement.go attestation.go boundary.go consensus.go
+    data_usage.go disclosure.go evidence.go   # one sub-client per domain
+    # Signing and offline verification
+    auth.go                   # LoadPrivateKey, BuildAdminHeaders (Ed25519)
+    canonical.go              # CanonicalJSON: byte-identical to the Python reference
+    strict_json.go            # CheckStrictJSON: JSON every implementation reads alike
+    strict.go                 # the field registry: UnknownFields, canonical forms
+    canonical_registry.json   # embedded registry, generated from testdata (see below)
+    verify.go                 # VerifyBoundaryDecision, VerifyAgreement, data-usage checks
+    key_history.go            # VerifyKeyHistory, NARecordTimeFields
+    grants.go                 # VerifyCapabilityGrant
+    *_test.go                 # tests; live_contract_test.go needs -tags live
+    testdata/conformance/     # vector suites copied from the core's conformance/vectors
+    testdata/contract/        # NA response fixture for contract_types_test.go
+  scripts/
+    sync_canonical_registry.py  # regenerate canonical_registry.json from the vectors
+    contract_na.py              # disposable NA for the live contract test
+    changelog.py                # changelog fragments: check, preview, release
+  changelog.d/                # fragments for the next version
+  go.mod  go.sum  VERSION
 ```
 
 ---
@@ -53,8 +70,8 @@ genesismesh/transport.go  = HTTP transport only: do, adminPost, publicPost, publ
 genesismesh/errors.go     = Typed error types only.
                             No domain logic. No HTTP calls.
 
-genesismesh/types.go      = Protocol structs only.
-                            No methods beyond String(). No functions. Pure data.
+genesismesh/types.go      = Protocol structs only, plus the UnmarshalJSON methods
+                            that fill their deprecated fields. No other logic.
                             Python equivalent: genesis_mesh/models/
 
 genesismesh/{domain}.go   = Sub-client: thin wrapper over transport.
@@ -65,7 +82,9 @@ genesismesh/{domain}.go   = Sub-client: thin wrapper over transport.
 
 **Do not mix layers.** If a sub-client needs to sign something directly, it
 belongs in `auth.go`. If a sub-client is doing HTTP retry logic, it belongs in
-`transport.go`.
+`transport.go`. The verifier files (`canonical.go`, `strict*.go`, `verify.go`,
+`key_history.go`, `grants.go`) make no HTTP calls, and the sub-clients do no
+verification.
 
 ---
 
@@ -180,17 +199,18 @@ Every public method must have:
 
 ## Release process
 
-This SDK follows the same release process as the main Python repo. Starting
-with v0.56.0, the core and all official SDKs use one coordinated version. The
-`VERSION` file and release tag must match.
+The core and the official SDKs use one coordinated version, and the core
+releases first (CI's `release-train` check). The `VERSION` file and the
+release tag must match.
 
-Every version shipped must:
-
-1. Pass `go build ./...`, `go vet ./...`, and `go test -race ./...`.
-2. Have a CHANGELOG entry in the main repo's `CHANGELOG.md`.
-3. Have its plan marked `[x]` in `genesismesh/ops/plan-vX.Y.Z.md`.
-4. Be committed, tagged `vX.Y.Z`, pushed, and have a GitHub release created.
-5. Have `genesismesh/docs/development/history.md` updated with a narrative entry.
+1. Every pull request adds a fragment `changelog.d/<version>/<name>.md`
+   (see `changelog.d/README.md`); none edits `CHANGELOG.md`.
+2. The release pull request (branch `release/<version>`) sets `VERSION` and
+   folds the fragments with `python scripts/changelog.py release <version>
+   --heading "## [<version>] - <date>"`.
+3. After the core's tag exists, the Maintainer tags `v<version>`; the
+   `Publish` workflow checks the tag and creates the GitHub release from the
+   version's `CHANGELOG.md` section.
 
 Go modules are published by git tag on a public repo. Users install with:
 
@@ -207,8 +227,7 @@ The `pkg.go.dev` index auto-discovers the module within minutes of the tag push.
 When acting as an AI coding agent in this repository:
 
 1. Read this file before making changes.
-2. Identify which Phase 2 goal the change supports (external operator onboarding,
-   Atlas integration, RFC ratification, conformance validation).
+2. Say which part the change touches: the offline verifier or the HTTP client.
 3. Keep changes small. One method → one test. One sub-client → one test file.
 4. Preserve layer boundaries. No signing logic in sub-clients. No domain
    knowledge in `transport.go`.
@@ -219,8 +238,9 @@ When acting as an AI coding agent in this repository:
    field, prerequisite call), add it to the "Known constraints" table in this
    file AND cover it with a negative test.
 9. Confirm before destructive operations. Approval once does not generalize.
-10. To validate Go SDK output against the protocol reference, run the
-    conformance test harness at `genesismesh/conformance/` in the main repo:
-    `python conformance/runner.py --sdk go` after generating vectors with
-    `python conformance/generate_vectors.py`. The vectors define the canonical
-    wire format that all SDK implementations must match.
+10. The conformance vectors define the canonical wire format every
+    implementation must match. They are copied from the core's
+    `conformance/vectors/` into `genesismesh/testdata/conformance/` and run by
+    `go test ./...`; after copying `field_registry.json`, run
+    `python scripts/sync_canonical_registry.py`. A vector kind the tests
+    neither run nor list as not run fails a test.

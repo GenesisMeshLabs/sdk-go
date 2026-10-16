@@ -8,3 +8,11 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  # The module's dependencies (go.mod, go.sum); one grouped pull request a month.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      gomod:
+        patterns: ["*"]

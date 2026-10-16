@@ -1,0 +1,73 @@
+name: Regression test
+
+# A bug fix carries the test that fails without it. A pull request titled
+# "fix: ..." or "fix(scope): ..." that changes source files fails this check
+# unless it also adds or modifies a test file (*_test.go; deleting one does
+# not count, nor does test data alone) or carries the label
+# "no-test-needed". Other pull requests and the merge queue pass.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  regression-test:
+    name: Regression test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pass outside a pull request
+        if: github.event_name != 'pull_request'
+        run: echo "Not a pull request (${GITHUB_EVENT_NAME}), nothing to check."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: A fix changes a test, or is labelled no-test-needed
+        if: github.event_name == 'pull_request'
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          case "$TITLE" in
+            fix:*|fix\(*) ;;
+            *) echo "Not a fix (title: $TITLE): no regression test required."; exit 0 ;;
+          esac
+          if echo "$LABELS" | jq -e 'any(.[]; . == "no-test-needed")' > /dev/null; then
+            echo "Labelled no-test-needed: no regression test required."
+            exit 0
+          fi
+          range="$BASE_SHA...$HEAD_SHA"
+          changed="$(git diff --no-renames --name-only "$range")"
+          # Only an added or modified test file counts as a test; a deleted
+          # one (and test data alone) does not.
+          tests="$(git diff --no-renames --name-only --diff-filter=AM "$range" | grep -E '_test\.go$' || true)"
+          deleted="$(git diff --no-renames --name-only --diff-filter=D "$range")"
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+          # Source: anything but docs, CI and repository files, changelog
+          # fragments, test data (the vectors copied from the core) and added
+          # or modified tests. A deleted file, a test among them, is a source change.
+          source="$( { echo "$changed" | grep -Ev '(^|/)[^/]*\.md$|^\.github/|^changelog\.d/|^genesismesh/testdata/|_test\.go$|^(LICENSE|VERSION|\.gitignore|\.gitattributes)$' || true; echo "$deleted" | grep -E '_test\.go$' || true; } | grep -v '^$' | sort -u || true)"
+          if [ -z "$source" ]; then
+            echo "No source file changed: no regression test required."
+            exit 0
+          fi
+          if [ -n "$tests" ]; then
+            echo "Fix with test changes:"
+            echo "$tests" | sed 's/^/  /'
+            exit 0
+          fi
+          echo "::error::A fix pull request changes source files but adds or modifies no test (*_test.go). Add the test that fails without the fix, or, when no test can show it, ask the Maintainer for the label no-test-needed."
+          echo "Source files changed:"
+          echo "$source" | sed 's/^/  /'
+          exit 1

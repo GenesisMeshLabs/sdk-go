@@ -5,7 +5,10 @@ package genesismesh
 // Live contract check: every client method against a running Network
 // Authority, each typed result compared with the JSON the NA sent.
 //
-//	GM_E2E_PYTHON=python go test -tags live -count=1 -run TestLiveContract ./genesismesh
+//	GM_E2E_PYTHON=python go test -tags live -count=1 -run '^TestLiveContract$' ./genesismesh
+//
+// Without GM_E2E_PYTHON the test skips, unless GM_E2E_REQUIRED=1 (set in CI):
+// then it fails.
 //
 // The Python environment needs the genesis-mesh core (scripts/contract_na.py
 // starts a disposable NA). With GM_CONTRACT_FIXTURE set to a path, the NA's
@@ -57,6 +60,11 @@ func (r *recordingTransport) body() json.RawMessage {
 func TestLiveContract(t *testing.T) {
 	python := os.Getenv("GM_E2E_PYTHON")
 	if python == "" {
+		// Skipped is not green: where the live check is required (CI), a
+		// missing NA fails instead of skipping.
+		if os.Getenv("GM_E2E_REQUIRED") == "1" {
+			t.Fatal("GM_E2E_REQUIRED=1 but GM_E2E_PYTHON is not set: the live contract check cannot run")
+		}
 		t.Skip("GM_E2E_PYTHON is not set")
 	}
 	na := exec.Command(python, "../scripts/contract_na.py")
