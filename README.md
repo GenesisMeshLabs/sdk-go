@@ -368,28 +368,48 @@ req.Header.Set("X-Admin-Nonce", headers.Nonce)
 
 ## Error handling
 
+Every HTTP error response from the NA comes back as a typed error, and every
+one of them is a `genesismesh.APIError` (its `StatusCode()` and `ErrorCode()`):
+
+| Status | Type |
+|---|---|
+| 400 | `BadRequestError` |
+| 401 | `UnauthorizedError` |
+| 403 | `ForbiddenError` (such as `insufficient_operator_tier`) |
+| 404 | `NotFoundError` |
+| 409 | `ConflictError` (such as `boundary_policy_required`) |
+| 413 | `PayloadTooLargeError` |
+| 422 | `ValidationError` |
+| 429 | `RateLimitError` |
+| other 4xx | `ClientError` |
+| 5xx | `ServerError` |
+
+A 4xx cannot succeed as sent, so retry only a `RateLimitError` (after a pause),
+a `ServerError` or a `NetworkError`.
+
 ```go
 import "errors"
 
 _, err := client.Agreement.Offer(ctx, genesismesh.CapabilityOffer{})
-switch {
-case err == nil:
-    // success
-default:
+if err != nil {
     var unauthorized *genesismesh.UnauthorizedError
+    var forbidden    *genesismesh.ForbiddenError
     var rateLimit    *genesismesh.RateLimitError
-    var validation  *genesismesh.ValidationError
-    var network     *genesismesh.NetworkError
+    var server       *genesismesh.ServerError
+    var network      *genesismesh.NetworkError
+    var apiErr       genesismesh.APIError
 
     switch {
     case errors.As(err, &unauthorized):
         // bad signing key or stale timestamp
-    case errors.As(err, &rateLimit):
+    case errors.As(err, &forbidden):
+        // the key's operator tier may not do this: do not retry
+    case errors.As(err, &rateLimit), errors.As(err, &server):
         // back off and retry
-    case errors.As(err, &validation):
-        // inspect err.Code and err.Message
     case errors.As(err, &network):
-        // connection refused or timeout — inspect err.Cause
+        // connection refused or timeout: inspect network.Cause
+    case errors.As(err, &apiErr):
+        // any other NA error: apiErr.StatusCode(), apiErr.ErrorCode()
     }
 }
 ```

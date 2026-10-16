@@ -102,8 +102,10 @@ shared wire naming convention makes cross-language debugging tractable.
 `{ "error": { "message": "...", "code": "..." } }`. If the format changes,
 **return an error**, do not silently produce a misleading result.
 
-Unknown HTTP status codes fall through to `GenesisMeshError` with the
-raw status — never swallow them.
+Every status maps to a typed error that is an `APIError` (v1.7.1): 400, 401,
+403, 404, 409, 413, 422 and 429 have their own types, any other 4xx is a
+`ClientError`, and only a 5xx is a `ServerError` (a caller may retry it).
+Never swallow a status, and never map a 4xx to `ServerError`.
 
 ### 5. Admin route invariant
 
