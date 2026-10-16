@@ -1,4 +1,37 @@
+# Every path needs a Maintainer's review. Later lines win, so the areas below
+# name the same team explicitly: they are the paths whose changes the
+# Maintainer merges (see .github/pull_request_template.md).
+
 * @GenesisMeshLabs/maintainers
-genesismesh/auth.go @GenesisMeshLabs/maintainers
-genesismesh/client.go @GenesisMeshLabs/maintainers
-genesismesh/types.go @GenesisMeshLabs/maintainers
+
+# Security-critical: signing, the transport's strict JSON, the offline verifiers
+/genesismesh/auth.go @GenesisMeshLabs/maintainers
+/genesismesh/transport.go @GenesisMeshLabs/maintainers
+/genesismesh/strict_json.go @GenesisMeshLabs/maintainers
+/genesismesh/strict.go @GenesisMeshLabs/maintainers
+/genesismesh/canonical.go @GenesisMeshLabs/maintainers
+/genesismesh/verify.go @GenesisMeshLabs/maintainers
+/genesismesh/key_history.go @GenesisMeshLabs/maintainers
+/genesismesh/grants.go @GenesisMeshLabs/maintainers
+/genesismesh/canonical_registry.json @GenesisMeshLabs/maintainers
+/SECURITY.md @GenesisMeshLabs/maintainers
+
+# Conformance vectors (copied from the core) and the contract fixture
+/genesismesh/testdata/ @GenesisMeshLabs/maintainers
+/scripts/sync_canonical_registry.py @GenesisMeshLabs/maintainers
+/scripts/contract_na.py @GenesisMeshLabs/maintainers
+
+# Public API surface
+/genesismesh/client.go @GenesisMeshLabs/maintainers
+/genesismesh/types.go @GenesisMeshLabs/maintainers
+/genesismesh/errors.go @GenesisMeshLabs/maintainers
+
+# Workflows and repository settings in code
+/.github/ @GenesisMeshLabs/maintainers
+
+# Packaging and release: the module, its version and the release notes tool
+/go.mod @GenesisMeshLabs/maintainers
+/go.sum @GenesisMeshLabs/maintainers
+/VERSION @GenesisMeshLabs/maintainers
+/CHANGELOG.md @GenesisMeshLabs/maintainers
+/scripts/changelog.py @GenesisMeshLabs/maintainers
