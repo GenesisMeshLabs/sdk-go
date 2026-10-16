@@ -442,6 +442,10 @@ go test -race ./...
 go vet ./...
 ```
 
+How the package is laid out, and where a change goes:
+[docs/architecture.md](docs/architecture.md). How to contribute:
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 MIT
