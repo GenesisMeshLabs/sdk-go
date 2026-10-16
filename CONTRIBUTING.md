@@ -113,6 +113,22 @@ code before your fix and see it fail. CI's `Regression test` check fails a
 pull request titled `fix: ...` that changes source files without changing a
 `*_test.go` file, unless the Maintainer labels it `no-test-needed`.
 
+CI also holds these ratchets; each fails a pull request that makes things worse:
+
+- `TestArchitectureLayers` (in `go test`): the layer table in
+  [docs/architecture.md](docs/architecture.md). A new source file needs a
+  layer, and the offline verifier may not use the HTTP client half.
+- Coverage floors (`scripts/coverage_floor.sh`): the package and the offline
+  verifier files may not fall below the floors in `.github/workflows/ci.yml`.
+- `Fuzz`: every `Fuzz*` target in `genesismesh/fuzz_test.go` runs for a few
+  seconds. A failing input the fuzzer writes to `genesismesh/testdata/fuzz/`
+  is committed with the fix, as a regression test.
+- `API compatibility`: an incompatible change to the Go API against the
+  latest release tag needs the label `breaking` (the Maintainer's call) and an
+  `### Upgrading` section in its changelog fragment. Run it locally with
+  `scripts/api_compat.sh origin/main HEAD` (needs `apidiff`).
+- `Vulnerabilities`: `govulncheck ./...`.
+
 After copying a new `field_registry.json` from the core, run
 `python scripts/sync_canonical_registry.py`; a test fails while the embedded
 registry differs from the suite.

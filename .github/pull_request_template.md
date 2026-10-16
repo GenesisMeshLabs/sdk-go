@@ -32,6 +32,11 @@ fix" otherwise. -->
 - [ ] Callers see a change: the fragment has an `### Upgrading` section that
       says what changes for them and what to do.
 
+<!-- The "API compatibility" check compares the Go API with the latest
+release tag (apidiff). An incompatible change fails it unless the pull
+request carries the label breaking, which only the Maintainer adds, and a
+fragment with an "### Upgrading" section. -->
+
 ## Flagged paths
 
 These need the Maintainer's review and merge. Tick any this pull request touches:

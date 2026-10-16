@@ -1,0 +1,77 @@
+name: API compatibility
+
+# The public API of package genesismesh stays compatible with the latest
+# release tag (golang.org/x/exp/cmd/apidiff; see scripts/api_compat.sh). An
+# incompatible change fails this check unless the pull request carries the
+# label "breaking" (only the Maintainer adds it) and adds a changelog fragment
+# with an "### Upgrading" section. A Go module's major version is part of its
+# import path, so a break in 1.x is expensive to undo: decide it on purpose.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+  # The merge queue runs the required checks on the queued merge.
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  api-compatibility:
+    name: API compatibility
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The labels of the pull request a merge group was built from.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install apidiff (pinned)
+        run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20261014143641-f0251eb4aa3e
+
+      - name: Is the pull request labelled breaking
+        env:
+          EVENT: ${{ github.event_name }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          case "$EVENT" in
+            pull_request)
+              labels="$(echo "$LABELS" | jq -r '.[]')" ;;
+            merge_group)
+              # gh-readonly-queue/main/pr-<number>-<sha>: the queued pull request.
+              number="$(printf '%s' "$QUEUE_REF" | sed -n 's|.*/pr-\([0-9][0-9]*\)-[0-9a-f]*$|\1|p')"
+              if [ -z "$number" ]; then
+                echo "::error::Cannot read the pull request number from the merge group ref $QUEUE_REF"
+                exit 1
+              fi
+              labels="$(gh api "repos/$REPO/issues/$number/labels" --jq '.[].name')" ;;
+            *)
+              echo "BREAKING=n/a" >> "$GITHUB_ENV"
+              exit 0 ;;
+          esac
+          if printf '%s\n' "$labels" | grep -qx 'breaking'; then
+            echo "BREAKING=yes" >> "$GITHUB_ENV"
+          else
+            echo "BREAKING=no" >> "$GITHUB_ENV"
+          fi
+
+      - name: No incompatible change without the label breaking and an Upgrading note
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: scripts/api_compat.sh "$BASE_SHA" "$HEAD_SHA"

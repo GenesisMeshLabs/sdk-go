@@ -61,8 +61,14 @@ jobs:
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...
 
-      - name: Coverage summary
-        run: go tool cover -func=coverage.out | tail -1
+      # A one-way ratchet: statement coverage may not fall below the floor
+      # (the value when the floor was set, rounded down). Raise the floor
+      # when coverage rises; never lower it to merge a change.
+      - name: Coverage floor
+        env:
+          FLOOR_TOTAL: "88"
+          FLOOR_VERIFIER: "87"
+        run: scripts/coverage_floor.sh coverage.out
 
   # The stable required check over the toolchain matrix: it fails when any
   # toolchain failed or was cancelled (a skipped matrix is not a pass).
@@ -78,6 +84,48 @@ jobs:
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           echo "$NEEDS" | jq -e 'to_entries | length > 0 and all(.value.result == "success")' > /dev/null
+
+  # Short fuzz runs of the parsers every verification starts from: strict
+  # JSON, the canonical form and the decision decoder (genesismesh/fuzz_test.go).
+  # `go test` above runs the same targets on their seed corpus.
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: true
+      - name: Fuzz every target for 10 seconds
+        run: |
+          set -euo pipefail
+          targets="$(go test -list '^Fuzz' ./genesismesh | grep '^Fuzz' || true)"
+          if [ -z "$targets" ]; then
+            echo "::error::No fuzz target found in ./genesismesh"
+            exit 1
+          fi
+          for target in $targets; do
+            echo "::group::$target"
+            go test -run '^$' -fuzz "^${target}\$" -fuzztime 10s ./genesismesh
+            echo "::endgroup::"
+          done
+
+  # Known vulnerabilities in the module's dependencies and the Go standard
+  # library it calls (govulncheck, pinned).
+  vulnerabilities:
+    name: Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache: true
+      - name: Install govulncheck (pinned)
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: govulncheck
+        run: govulncheck ./...
 
   # Every client method against a running Network Authority: each typed
   # result must model the JSON the NA sent (v1.0.2: most of them did not).
