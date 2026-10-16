@@ -1,0 +1,12 @@
+# Generated files and copies: GitHub collapses them in pull request diffs and
+# leaves them out of the language statistics, so a review shows the code.
+
+# Vector suites copied unchanged from the core's conformance/vectors/.
+genesismesh/testdata/conformance/*.json linguist-generated=true
+# NA responses captured by the live contract test (GM_CONTRACT_FIXTURE).
+genesismesh/testdata/contract/*.json linguist-generated=true
+# Written by scripts/sync_canonical_registry.py from field_registry.json.
+genesismesh/canonical_registry.json linguist-generated=true
+# Inputs the Go fuzzer wrote (go test -fuzz), kept as regression tests.
+genesismesh/testdata/fuzz/** linguist-generated=true
+go.sum linguist-generated=true
