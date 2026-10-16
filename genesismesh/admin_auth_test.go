@@ -15,13 +15,15 @@ import (
 // The shared reference vectors (genesismesh conformance/vectors/admin_auth.json),
 // copied unchanged. Seed "a" of the reference suite is bytes 0..31.
 func TestAdminSignatureConformanceVectors(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("testdata", "conformance", "admin_auth.json"))
+	file := filepath.Join("testdata", "conformance", "admin_auth.json")
+	raw, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var suite struct {
 		Vectors []struct {
 			ID    string `json:"id"`
+			Kind  string `json:"kind"`
 			Input struct {
 				Method    string              `json:"method"`
 				Path      string              `json:"path"`
@@ -46,7 +48,9 @@ func TestAdminSignatureConformanceVectors(t *testing.T) {
 		seed[i] = byte(i)
 	}
 	priv := ed25519.NewKeyFromSeed(seed)
+	receipt := newReceipt(t, "admin_auth", file)
 	for _, v := range suite.Vectors {
+		receipt.ran(v.Kind)
 		t.Run(v.ID, func(t *testing.T) {
 			body, err := decodeJSON(v.Input.Body)
 			if err != nil {

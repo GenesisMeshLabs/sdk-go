@@ -34,9 +34,11 @@ var auditKindsNotRun = map[string]bool{
 	"registry_keys": true, "report_cell": true, "changes_file": true,
 }
 
+const auditSuiteFile = "testdata/conformance/audit.json"
+
 func loadAuditVectors(t *testing.T) []auditVector {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/conformance/audit.json")
+	raw, err := os.ReadFile(auditSuiteFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,12 +103,15 @@ func keyDicts(h *NAKeyHistory) []interface{} {
 
 func TestConformanceAuditVectors(t *testing.T) {
 	kinds := map[string]int{}
+	receipt := newReceipt(t, "audit", auditSuiteFile)
 	for _, v := range loadAuditVectors(t) {
 		v := v
 		kinds[v.Kind]++
 		if auditKindsNotRun[v.Kind] {
+			receipt.notRun(v.Kind)
 			continue
 		}
+		receipt.ran(v.Kind)
 		t.Run(v.ID, func(t *testing.T) {
 			var got interface{}
 			switch v.Kind {

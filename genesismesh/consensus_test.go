@@ -13,12 +13,15 @@ import (
 // encodes back to the same canonical JSON: no field is lost or renamed, so a
 // vote or proof can be passed back to the NA and its signatures still verify.
 func TestConsensusTypesRoundTripPythonProof(t *testing.T) {
-	raw, err := os.ReadFile("testdata/conformance/consensus.json")
+	const file = "testdata/conformance/consensus.json"
+	raw, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var suite struct {
 		Vectors []struct {
+			ID    string `json:"id"`
+			Kind  string `json:"kind"`
 			Input struct {
 				Proof json.RawMessage `json:"proof"`
 			} `json:"input"`
@@ -27,28 +30,35 @@ func TestConsensusTypesRoundTripPythonProof(t *testing.T) {
 	if err := json.Unmarshal(raw, &suite); err != nil {
 		t.Fatal(err)
 	}
-	original := suite.Vectors[0].Input.Proof
-	var proof ConsensusProof
-	if err := json.Unmarshal(original, &proof); err != nil {
-		t.Fatal(err)
+	if len(suite.Vectors) == 0 {
+		t.Fatal("no consensus vectors")
 	}
-	if len(proof.Votes) == 0 || proof.Votes[0].ContextDigest == nil || len(proof.Votes[0].Signature) == 0 {
-		t.Fatalf("vote fields lost: %+v", proof.Votes)
-	}
-	encoded, err := json.Marshal(proof)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := CanonicalJSON(original)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := CanonicalJSON(encoded)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != want {
-		t.Errorf("round trip changed the proof\n got: %s\nwant: %s", got, want)
+	receipt := newReceipt(t, "consensus", file)
+	for _, v := range suite.Vectors {
+		receipt.ran(v.Kind)
+		original := v.Input.Proof
+		var proof ConsensusProof
+		if err := json.Unmarshal(original, &proof); err != nil {
+			t.Fatalf("%s: %v", v.ID, err)
+		}
+		if len(proof.Votes) == 0 || proof.Votes[0].ContextDigest == nil || len(proof.Votes[0].Signature) == 0 {
+			t.Fatalf("%s: vote fields lost: %+v", v.ID, proof.Votes)
+		}
+		encoded, err := json.Marshal(proof)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err := CanonicalJSON(original)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := CanonicalJSON(encoded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("%s: round trip changed the proof\n got: %s\nwant: %s", v.ID, got, want)
+		}
 	}
 }
 

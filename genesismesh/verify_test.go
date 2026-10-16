@@ -21,9 +21,11 @@ type vector struct {
 	Expected    map[string]interface{}     `json:"expected"`
 }
 
+const interopSuiteFile = "testdata/conformance/interop.json"
+
 func loadVectors(t *testing.T) []vector {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/conformance/interop.json")
+	raw, err := os.ReadFile(interopSuiteFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,9 +65,11 @@ func text(t *testing.T, raw json.RawMessage) string {
 
 func TestConformanceInteropVectors(t *testing.T) {
 	kinds := map[string]int{}
+	receipt := newReceipt(t, "interop", interopSuiteFile)
 	for _, v := range loadVectors(t) {
 		v := v
 		kinds[v.Kind]++
+		receipt.ran(v.Kind)
 		t.Run(v.ID, func(t *testing.T) {
 			var got map[string]interface{}
 			switch v.Kind {

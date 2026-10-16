@@ -31,9 +31,11 @@ var grantsKindsNotRun = map[string]bool{
 	"envelope_parameter": true, "envelope": true, "issuance": true, "use": true, "verify_export": true,
 }
 
+const grantsSuiteFile = "testdata/conformance/grants.json"
+
 func loadGrantsVectors(t *testing.T) []grantsVector {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/conformance/grants.json")
+	raw, err := os.ReadFile(grantsSuiteFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,12 +65,15 @@ func grantsVectorByID(t *testing.T, id string) grantsVector {
 
 func TestConformanceGrantsVectors(t *testing.T) {
 	kinds := map[string]int{}
+	receipt := newReceipt(t, "grants", grantsSuiteFile)
 	for _, v := range loadGrantsVectors(t) {
 		v := v
 		kinds[v.Kind]++
 		if grantsKindsNotRun[v.Kind] {
+			receipt.notRun(v.Kind)
 			continue
 		}
+		receipt.ran(v.Kind)
 		t.Run(v.ID, func(t *testing.T) {
 			record, err := decodeObject(v.Record, "record")
 			if err != nil {
