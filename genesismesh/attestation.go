@@ -1,9 +1,6 @@
 package genesismesh
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // AttestationClient wraps the Attestation domain.
 type AttestationClient struct{ t *transport }
@@ -19,9 +16,15 @@ func (c *AttestationClient) Issue(ctx context.Context, body map[string]interface
 
 // Revoke revokes an attestation by ID.
 // POST /admin/attestations/{id}/revoke
+// An attestationID that is not a single path segment (empty, ".", "..", or
+// containing "/", "?", "#", "%" or a control character) returns a
+// *PathSegmentError before anything is signed or sent (v1.7.1).
 func (c *AttestationClient) Revoke(ctx context.Context, attestationID string, body map[string]interface{}) error {
-	path := fmt.Sprintf("/admin/attestations/%s/revoke", attestationID)
-	return c.t.adminPost(ctx, path, body, nil)
+	id, err := pathSegment("attestation_id", attestationID)
+	if err != nil {
+		return err
+	}
+	return c.t.adminPost(ctx, "/admin/attestations/"+id+"/revoke", body, nil)
 }
 
 // SavePolicy sets the active recognition policy.

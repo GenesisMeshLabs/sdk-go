@@ -41,6 +41,23 @@ type NetworkError struct {
 func (e *NetworkError) Error() string { return fmt.Sprintf("genesismesh: network error: %v", e.Cause) }
 func (e *NetworkError) Unwrap() error { return e.Cause }
 
+// PathSegmentError is a caller-supplied value refused as a segment of a
+// request path (v1.7.1), such as an attestation ID containing "/" or "..":
+// it would sign and call another route. It is returned before any request is
+// signed or sent, so it is not an APIError.
+type PathSegmentError struct {
+	// Param names the value, such as "attestation_id".
+	Param string
+	// Value is the refused value.
+	Value string
+	// Reason says why, such as `contains "/"`.
+	Reason string
+}
+
+func (e *PathSegmentError) Error() string {
+	return fmt.Sprintf("genesismesh: %s %q is not a single path segment: %s", e.Param, e.Value, e.Reason)
+}
+
 // Typed errors for specific HTTP status codes. Every one is an APIError.
 //
 // A 4xx means the request cannot succeed as sent: only a RateLimitError is

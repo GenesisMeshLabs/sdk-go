@@ -58,6 +58,32 @@ func newTransport(opts ClientOptions) (*transport, error) {
 	return t, nil
 }
 
+// pathSegment returns value when it can stand as one segment of a request
+// path, and a *PathSegmentError otherwise (v1.7.1). The NA routes on the
+// decoded path and admin signatures cover it, so a value is checked, not
+// escaped: "/", "?", "#" and "%" would change the route or what the NA reads,
+// "." and ".." are path steps, and control characters do not belong in a URL.
+func pathSegment(param, value string) (string, error) {
+	refuse := func(reason string) (string, error) {
+		return "", &PathSegmentError{Param: param, Value: value, Reason: reason}
+	}
+	switch value {
+	case "":
+		return refuse("it is empty")
+	case ".", "..":
+		return refuse("it is a relative path step")
+	}
+	for _, r := range value {
+		switch {
+		case r == '/' || r == '?' || r == '#' || r == '%':
+			return refuse(fmt.Sprintf("it contains %q", r))
+		case r < 0x20 || r == 0x7f:
+			return refuse("it contains a control character")
+		}
+	}
+	return value, nil
+}
+
 func (t *transport) adminPost(ctx context.Context, path string, body interface{}, out interface{}) error {
 	if t.privateKey == nil {
 		return fmt.Errorf("genesismesh: signing key required for admin route %s", path)
