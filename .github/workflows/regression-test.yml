@@ -2,7 +2,8 @@ name: Regression test
 
 # A bug fix carries the test that fails without it. A pull request titled
 # "fix: ..." or "fix(scope): ..." that changes source files fails this check
-# unless it also changes a test file (*_test.go) or carries the label
+# unless it also adds or modifies a test file (*_test.go; deleting one does
+# not count, nor does test data alone) or carries the label
 # "no-test-needed". Other pull requests and the merge queue pass.
 
 on:
@@ -45,13 +46,18 @@ jobs:
             echo "Labelled no-test-needed: no regression test required."
             exit 0
           fi
-          changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          range="$BASE_SHA...$HEAD_SHA"
+          changed="$(git diff --no-renames --name-only "$range")"
+          # Only an added or modified test file counts as a test; a deleted
+          # one (and test data alone) does not.
+          tests="$(git diff --no-renames --name-only --diff-filter=AM "$range" | grep -E '_test\.go$' || true)"
+          deleted="$(git diff --no-renames --name-only --diff-filter=D "$range")"
           echo "Changed files:"
           echo "$changed" | sed 's/^/  /'
           # Source: anything but docs, CI and repository files, changelog
-          # fragments, test data (the vectors copied from the core) and tests.
-          source="$(echo "$changed" | grep -Ev '(^|/)[^/]*\.md$|^\.github/|^changelog\.d/|^genesismesh/testdata/|_test\.go$|^(LICENSE|VERSION|\.gitignore|\.gitattributes)$' || true)"
-          tests="$(echo "$changed" | grep -E '_test\.go$' || true)"
+          # fragments, test data (the vectors copied from the core) and added
+          # or modified tests. A deleted file, a test among them, is a source change.
+          source="$( { echo "$changed" | grep -Ev '(^|/)[^/]*\.md$|^\.github/|^changelog\.d/|^genesismesh/testdata/|_test\.go$|^(LICENSE|VERSION|\.gitignore|\.gitattributes)$' || true; echo "$deleted" | grep -E '_test\.go$' || true; } | grep -v '^$' | sort -u || true)"
           if [ -z "$source" ]; then
             echo "No source file changed: no regression test required."
             exit 0
@@ -61,7 +67,7 @@ jobs:
             echo "$tests" | sed 's/^/  /'
             exit 0
           fi
-          echo "::error::A fix pull request changes source files but no test (*_test.go). Add the test that fails without the fix, or, when no test can show it, ask the Maintainer for the label no-test-needed."
+          echo "::error::A fix pull request changes source files but adds or modifies no test (*_test.go). Add the test that fails without the fix, or, when no test can show it, ask the Maintainer for the label no-test-needed."
           echo "Source files changed:"
           echo "$source" | sed 's/^/  /'
           exit 1
