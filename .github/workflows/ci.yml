@@ -108,10 +108,20 @@ jobs:
         with:
           go-version: "1.23"
           cache: true
+      # Skipped is not green: GM_E2E_REQUIRED=1 makes the test fail rather
+      # than skip without an NA, and the step fails unless TestLiveContract
+      # itself ran and passed (a filter matching no test exits 0 in Go).
       - name: Typed results match a live Network Authority
-        run: go test -tags live -count=1 -run TestLiveContract ./genesismesh
+        run: |
+          set -o pipefail
+          go test -tags live -count=1 -v -run '^TestLiveContract$' ./genesismesh | tee live-contract.log
+          grep -q '^--- PASS: TestLiveContract ' live-contract.log || {
+            echo "::error::TestLiveContract did not run and pass"
+            exit 1
+          }
         env:
           GM_E2E_PYTHON: python
+          GM_E2E_REQUIRED: "1"
 
   release-train:
     runs-on: ubuntu-latest
