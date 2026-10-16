@@ -21,9 +21,11 @@ type canonicalVector struct {
 	Expected map[string]json.RawMessage `json:"expected"`
 }
 
+const canonicalSuiteFile = "testdata/conformance/canonical.json"
+
 func loadCanonicalSuite(t *testing.T) []canonicalVector {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/conformance/canonical.json")
+	raw, err := os.ReadFile(canonicalSuiteFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +55,7 @@ func TestConformanceCanonicalVectors(t *testing.T) {
 	if len(vectors) < 70 {
 		t.Fatalf("only %d vectors", len(vectors))
 	}
+	receipt := newReceipt(t, "canonical", canonicalSuiteFile)
 	for _, v := range vectors {
 		var input map[string]json.RawMessage
 		_ = json.Unmarshal(v.Input, &input)
@@ -111,7 +114,9 @@ func TestConformanceCanonicalVectors(t *testing.T) {
 			expectJSON(t, v.ID, map[string]string{"detail": detail}, v.Expected)
 		default:
 			t.Errorf("%s: unknown kind %s", v.ID, v.Kind)
+			continue
 		}
+		receipt.ran(v.Kind)
 	}
 }
 

@@ -31,9 +31,11 @@ type fieldRegistryVector struct {
 	} `json:"expected"`
 }
 
+const fieldRegistrySuiteFile = "testdata/conformance/field_registry.json"
+
 func loadFieldRegistrySuite(t *testing.T) (json.RawMessage, []fieldRegistryVector) {
 	t.Helper()
-	raw, err := os.ReadFile("testdata/conformance/field_registry.json")
+	raw, err := os.ReadFile(fieldRegistrySuiteFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,6 +160,7 @@ func TestConformanceFieldRegistryVectors(t *testing.T) {
 	if len(vectors) < 70 {
 		t.Fatalf("only %d vectors", len(vectors))
 	}
+	receipt := newReceipt(t, "field_registry", fieldRegistrySuiteFile)
 	for _, v := range vectors {
 		switch v.Kind {
 		case "unknown_fields":
@@ -188,10 +191,15 @@ func TestConformanceFieldRegistryVectors(t *testing.T) {
 				t.Errorf("%s: got %+v %v, want %v %s", v.ID, got, err, *v.Expected.Accepted, v.Expected.Reason)
 			}
 		case "entry_kind", "export":
-			// This package has no evidence export verifier.
+			// This package has no evidence export verifier: not run, and
+			// reported so in the conformance receipt.
+			receipt.notRun(v.Kind)
+			continue
 		default:
 			t.Errorf("%s: unknown kind %s", v.ID, v.Kind)
+			continue
 		}
+		receipt.ran(v.Kind)
 	}
 }
 
