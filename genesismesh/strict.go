@@ -58,7 +58,13 @@ func mustLoadRegistry(raw []byte) registryDoc {
 // ("policy_binding.policies.0.extra"). Only the signed projection is checked
 // (not the signature, not an agreement's unsigned fields); free-form fields are
 // not inspected; values of the wrong type are left to validation.
+//
+// A model the registry does not define is an error (v1.7.1): before, it
+// returned no fields, so a misspelt or renamed model turned the check off.
 func UnknownFields(model string, recordJSON []byte) ([]string, error) {
+	if _, ok := canonicalRegistry.Models[model]; !ok {
+		return nil, errUnknownModel(model)
+	}
 	v, err := decodeJSON(recordJSON)
 	if err != nil {
 		return nil, fmt.Errorf("genesismesh: record is not valid JSON: %w", err)
@@ -67,6 +73,15 @@ func UnknownFields(model string, recordJSON []byte) ([]string, error) {
 	sort.Strings(found)
 	return found, nil
 }
+
+func errUnknownModel(model string) error {
+	return fmt.Errorf("genesismesh: the field registry has no model %q", model)
+}
+
+// anyField is the path reported, under a record's own path, for a record whose
+// model the registry does not define (v1.7.1): none of its fields is known, so
+// the strict checks refuse it rather than pass it unchecked.
+const anyField = "*"
 
 func outsideProjection(spec registryModelSpec, key string) bool {
 	if spec.SignatureField != nil && key == *spec.SignatureField {
@@ -85,8 +100,11 @@ func outsideProjection(spec registryModelSpec, key string) bool {
 
 func unknownFieldsIn(model string, data interface{}, path string, projection bool) []string {
 	spec, ok := canonicalRegistry.Models[model]
+	if !ok {
+		return []string{path + anyField}
+	}
 	record, isObject := data.(map[string]interface{})
-	if !ok || !isObject {
+	if !isObject {
 		return nil
 	}
 	var found []string
@@ -157,8 +175,12 @@ func nonCanonicalTimestamps(model string, record interface{}) []string {
 	var walk func(name string, data interface{}, prefix string, projection bool)
 	walk = func(name string, data interface{}, prefix string, projection bool) {
 		spec, ok := canonicalRegistry.Models[name]
+		if !ok {
+			found = append(found, prefix+anyField)
+			return
+		}
 		obj, isObject := data.(map[string]interface{})
-		if !ok || !isObject {
+		if !isObject {
 			return
 		}
 		for key, value := range obj {
@@ -216,8 +238,12 @@ func nonCanonicalFields(model string, record interface{}) []string {
 	var walk func(name string, data interface{}, prefix string, projection bool)
 	walk = func(name string, data interface{}, prefix string, projection bool) {
 		spec, ok := canonicalRegistry.Models[name]
+		if !ok {
+			found = append(found, prefix+anyField)
+			return
+		}
 		obj, isObject := data.(map[string]interface{})
-		if !ok || !isObject {
+		if !isObject {
 			return
 		}
 		omitted := map[string]bool{}
