@@ -23,68 +23,34 @@ References in the core repository (`genesismesh`):
 
 ```text
 sdk-go/
-  genesismesh/                # one package
-    # HTTP client
-    client.go                 # Client entry point: 7 sub-clients over one transport
-    transport.go              # HTTP transport: do, adminPost, publicPost, publicGet;
-                              #   strict JSON and case-folded keys refused on responses
-    errors.go                 # typed errors (APIError), parseErrorResponse
-    types.go                  # protocol structs (snake_case JSON tags) and their UnmarshalJSON
-    agreement.go attestation.go boundary.go consensus.go
-    data_usage.go disclosure.go evidence.go   # one sub-client per domain
-    # Signing and offline verification
-    auth.go                   # LoadPrivateKey, BuildAdminHeaders (Ed25519)
-    canonical.go              # CanonicalJSON: byte-identical to the Python reference
-    strict_json.go            # CheckStrictJSON: JSON every implementation reads alike
-    strict.go                 # the field registry: UnknownFields, canonical forms
-    canonical_registry.json   # embedded registry, generated from testdata (see below)
-    verify.go                 # VerifyBoundaryDecision, VerifyAgreement, data-usage checks
-    key_history.go            # VerifyKeyHistory, NARecordTimeFields
-    grants.go                 # VerifyCapabilityGrant
-    *_test.go                 # tests; live_contract_test.go needs -tags live
+  genesismesh/                # one package: the offline verifier and the HTTP client
     testdata/conformance/     # vector suites copied from the core's conformance/vectors
     testdata/contract/        # NA response fixture for contract_types_test.go
-  scripts/
-    sync_canonical_registry.py  # regenerate canonical_registry.json from the vectors
-    contract_na.py              # disposable NA for the live contract test
-    changelog.py                # changelog fragments: check, preview, release
+  docs/architecture.md        # file map, layers, data flow, "where a change goes"
+  scripts/                    # registry sync, live-test NA, changelog fragments, CI ratchets
   changelog.d/                # fragments for the next version
   go.mod  go.sum  VERSION
 ```
+
+[docs/architecture.md](docs/architecture.md) is the map: one line per file,
+the layers and the direction they may depend in, how a call and a
+verification flow, and recipes listing the files a change touches and the
+test that fails if one is missed. Read it before adding or moving code.
 
 ---
 
 ## Layer rule
 
-Mirror the Python main repo's enforced layer separation:
-
-```
-genesismesh/auth.go       = Pure crypto: canonicalJSON, LoadPrivateKey, BuildAdminHeaders.
-                            No HTTP. No domain knowledge.
-                            Python equivalent: genesis_mesh/crypto/
-
-genesismesh/transport.go  = HTTP transport only: do, adminPost, publicPost, publicGet.
-                            No signing logic inline. No domain knowledge.
-                            Python equivalent: na_service/ (transport layer)
-
-genesismesh/errors.go     = Typed error types only.
-                            No domain logic. No HTTP calls.
-
-genesismesh/types.go      = Protocol structs only, plus the UnmarshalJSON methods
-                            that fill their deprecated fields. No other logic.
-                            Python equivalent: genesis_mesh/models/
-
-genesismesh/{domain}.go   = Sub-client: thin wrapper over transport.
-                            One file per domain. Methods call adminPost/publicPost/publicGet.
-                            No signing logic inline. No URL construction beyond the path.
-                            Python equivalent: na_service/routes/
-```
+The layer table in [docs/architecture.md](docs/architecture.md) is enforced
+by `TestArchitectureLayers` (`genesismesh/architecture_test.go`): a file may
+use only its own layer and the layers listed for it, every source file must
+have a layer, and the offline verifier (json, registry, verifiers) never
+uses the HTTP client half and imports no `net` package.
 
 **Do not mix layers.** If a sub-client needs to sign something directly, it
 belongs in `auth.go`. If a sub-client is doing HTTP retry logic, it belongs in
-`transport.go`. The verifier files (`canonical.go`, `strict*.go`, `verify.go`,
-`key_history.go`, `grants.go`) make no HTTP calls, and the sub-clients do no
-verification.
+`transport.go`. The verifier files make no HTTP calls, and the sub-clients do
+no verification.
 
 ---
 

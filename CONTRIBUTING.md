@@ -35,19 +35,12 @@ go test -race ./...
 
 ## Project structure
 
-Read [AGENT.md](AGENT.md) for the full file layout and the layer rule before
-adding or changing source files. The short version:
-
-| File | What goes here |
-|------|---------------|
-| `genesismesh/auth.go` | Ed25519 keys and admin headers |
-| `genesismesh/transport.go` | HTTP transport only: do, adminPost, publicPost, publicGet |
-| `genesismesh/errors.go` | Typed error types only |
-| `genesismesh/types.go` | Protocol structs, and the `UnmarshalJSON` methods that fill deprecated fields |
-| `genesismesh/{domain}.go` | Sub-client: thin wrapper over transport |
-| `genesismesh/canonical.go`, `strict_json.go`, `strict.go` | Canonical JSON, strict JSON, the field registry |
-| `genesismesh/verify.go`, `key_history.go`, `grants.go` | Offline verifiers of NA-signed records |
-| `genesismesh/testdata/conformance/` | Vector suites copied from the core (do not edit by hand) |
+[docs/architecture.md](docs/architecture.md) maps every source file to its
+layer, shows the direction layers may depend in (enforced by
+`TestArchitectureLayers`), and has recipes for the common changes: a client
+method, a response field, a record kind from a core release, an error
+mapping, an API change. Each recipe lists the files to touch and the test
+that fails if one is missed. [AGENT.md](AGENT.md) has the conventions.
 
 Do not mix layers. A sub-client file must not contain crypto primitives, and
 the verifiers and the auth module must not make HTTP calls.
