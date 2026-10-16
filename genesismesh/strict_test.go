@@ -388,3 +388,31 @@ func TestTextThatIsNotUTF8IsRefusedFirst(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+// v1.7.1: a model the registry does not define fails closed. Before, a
+// misspelt model returned no unknown fields, so the strict check was off for
+// that verifier: UnknownFields("BoundaryDecison", ...) returned [] where the
+// correct name returned [smuggled].
+func TestAnUnknownModelFailsClosed(t *testing.T) {
+	record := []byte(`{"decision_id":"d-1","smuggled":true}`)
+	if found, err := UnknownFields("BoundaryDecision", record); err != nil || !reflect.DeepEqual(found, []string{"smuggled"}) {
+		t.Fatalf("BoundaryDecision: %v %v", found, err)
+	}
+	found, err := UnknownFields("BoundaryDecison", record)
+	if err == nil || !strings.Contains(err.Error(), `no model "BoundaryDecison"`) {
+		t.Errorf("a misspelt model: %v %v, want an error", found, err)
+	}
+	obj := object{"decision_id": "d-1"}
+	if !hasUnknownFields("BoundaryDecison", obj) {
+		t.Error("hasUnknownFields passed a record of a model the registry lacks")
+	}
+	if got := unknownFieldsIn("BoundaryDecison", obj, "policy.", true); !reflect.DeepEqual(got, []string{"policy.*"}) {
+		t.Errorf("unknownFieldsIn: %v", got)
+	}
+	if got := nonCanonicalFields("BoundaryDecison", obj); len(got) == 0 {
+		t.Error("nonCanonicalFields passed a record of a model the registry lacks")
+	}
+	if got := strictRefusal("BoundaryDecison", obj, nil); got == "" {
+		t.Error("strictRefusal passed a record of a model the registry lacks")
+	}
+}

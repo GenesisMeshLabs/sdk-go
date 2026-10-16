@@ -107,6 +107,10 @@ Every status maps to a typed error that is an `APIError` (v1.7.1): 400, 401,
 `ClientError`, and only a 5xx is a `ServerError` (a caller may retry it).
 Never swallow a status, and never map a 4xx to `ServerError`.
 
+A model name the field registry does not define fails closed (v1.7.1):
+`UnknownFields` returns an error and the strict checks refuse the record.
+`TestEveryModelNameInTheSourceIsInTheRegistry` checks every model literal.
+
 ### 5. Admin route invariant
 
 The NA constructs and signs protocol artifacts from declared intent.
