@@ -231,16 +231,53 @@ func (m *MembershipAttestation) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// RecognizedIssuer is an entry in a RecognitionPolicy.
+// RecognizedIssuer is an entry in a RecognitionPolicy: a sovereign whose
+// membership attestations the NA accepts, signed with one of PublicKeys
+// (base64 Ed25519; at least one is required). AllowedRoles lists the roles
+// accepted from it (empty accepts none); AcceptedStatuses defaults to the
+// NA's ("active") when empty.
 type RecognizedIssuer struct {
-	IssuerSovereignID string   `json:"issuer_sovereign_id"`
-	AllowedRoles      []string `json:"allowed_roles"`
+	SovereignID      string   `json:"sovereign_id"`
+	PublicKeys       []string `json:"public_keys"`
+	AllowedRoles     []string `json:"allowed_roles,omitempty"`
+	AcceptedStatuses []string `json:"accepted_statuses,omitempty"`
+
+	// Deprecated: use SovereignID. The NA never read issuer_sovereign_id, so a
+	// policy built with it was refused (v1.7.1). It is filled in when decoding
+	// and sent as sovereign_id when SovereignID is empty.
+	IssuerSovereignID string `json:"-"`
 }
 
-// RecognitionPolicy is the body for POST /admin/recognition-policy.
+// MarshalJSON writes the NA's RecognizedIssuer: SovereignID, or the
+// deprecated IssuerSovereignID when SovereignID is empty, as sovereign_id.
+func (r RecognizedIssuer) MarshalJSON() ([]byte, error) {
+	type wire RecognizedIssuer
+	w := wire(r)
+	if w.SovereignID == "" {
+		w.SovereignID = w.IssuerSovereignID
+	}
+	return json.Marshal(w)
+}
+
+// UnmarshalJSON decodes the NA's RecognizedIssuer and fills the deprecated field.
+func (r *RecognizedIssuer) UnmarshalJSON(data []byte) error {
+	type wire RecognizedIssuer
+	var w wire
+	if err := json.Unmarshal(data, &w); err != nil {
+		return err
+	}
+	*r = RecognizedIssuer(w)
+	r.IssuerSovereignID = r.SovereignID
+	return nil
+}
+
+// RecognitionPolicy is the NA's recognition policy: the recognition_policy
+// field of the POST /admin/recognition-policy body. Pass it to
+// Attestation.SavePolicy as map[string]interface{}{"recognition_policy": policy}.
 type RecognitionPolicy struct {
-	LocalSovereignID  string             `json:"local_sovereign_id"`
-	RecognizedIssuers []RecognizedIssuer `json:"recognized_issuers"`
+	LocalSovereignID      string             `json:"local_sovereign_id"`
+	RecognizedIssuers     []RecognizedIssuer `json:"recognized_issuers,omitempty"`
+	RevokedAttestationIDs []string           `json:"revoked_attestation_ids,omitempty"`
 }
 
 // CapabilityCommitment is returned by POST /admin/disclosure/commit.

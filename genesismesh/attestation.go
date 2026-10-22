@@ -30,7 +30,9 @@ func (c *AttestationClient) Revoke(ctx context.Context, attestationID string, bo
 
 // SavePolicy sets the active recognition policy.
 // POST /admin/recognition-policy
-// body.recognition_policy must have local_sovereign_id and recognized_issuers.
+// body.recognition_policy is the policy: a RecognitionPolicy, or a map with
+// local_sovereign_id and recognized_issuers (each with sovereign_id and
+// public_keys).
 func (c *AttestationClient) SavePolicy(ctx context.Context, body map[string]interface{}) error {
 	return c.t.adminPost(ctx, "/admin/recognition-policy", body, nil)
 }
