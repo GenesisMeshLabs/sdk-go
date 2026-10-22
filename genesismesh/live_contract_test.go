@@ -221,6 +221,13 @@ func TestLiveContract(t *testing.T) {
 			"public_keys": []string{in.NAPublicKey}, "allowed_roles": []string{"role:client"}, "accepted_statuses": []string{"active"}}},
 		"revoked_attestation_ids": []string{}}})
 	check("attestation_save_policy", nil, err)
+	// v1.7.1: the typed RecognitionPolicy is a body the NA accepts.
+	err = c.Attestation.SavePolicy(ctx, map[string]interface{}{"recognition_policy": RecognitionPolicy{
+		LocalSovereignID: in.NetworkName, RecognizedIssuers: []RecognizedIssuer{{SovereignID: in.NetworkName,
+			PublicKeys: []string{in.NAPublicKey}, AllowedRoles: []string{"role:client"}}}}})
+	if err != nil {
+		t.Fatalf("attestation_save_policy (RecognitionPolicy): %v", err)
+	}
 	err = c.Attestation.Revoke(ctx, attestation.AttestationID, map[string]interface{}{"reason": "contract"})
 	check("attestation_revoke", nil, err)
 
