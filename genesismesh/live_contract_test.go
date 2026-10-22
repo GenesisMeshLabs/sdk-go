@@ -198,6 +198,12 @@ func TestLiveContract(t *testing.T) {
 	usage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": rawIntent, "policy": rawPolicy})
 	check("data_usage_verify", usage, err)
 	accepted("data_usage_verify", usage)
+	// v1.7.1: the decoded intent, whose source has no classification tags,
+	// still verifies when it is sent back.
+	decodedUsage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": intent, "policy": policy})
+	if err != nil || !decodedUsage.Accepted {
+		t.Errorf("data_usage_verify (decoded intent): %+v, %v; the NA answered %s", decodedUsage, err, rec.body())
+	}
 
 	vote, err := c.Consensus.Vote(ctx, map[string]interface{}{"justification_proof": in.JustificationProof, "vote": true, "reason": "contract"})
 	rawVote := check("consensus_vote", vote, err)

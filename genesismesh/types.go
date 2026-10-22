@@ -382,8 +382,21 @@ type DataSourceDescriptor struct {
 	SourceID             string   `json:"source_id"`
 	SourceType           string   `json:"source_type"` // "personal"|"proprietary"|"public"|"synthetic"
 	OwnerSovereignID     string   `json:"owner_sovereign_id"`
-	ClassificationTags   []string `json:"classification_tags,omitempty"`
+	ClassificationTags   []string `json:"classification_tags"`
 	EstimatedVolumeBytes *int64   `json:"estimated_volume_bytes,omitempty"`
+}
+
+// MarshalJSON writes classification_tags as a list, [] when there are none
+// (v1.7.1). The NA signs an intent's sources with the list, so a source
+// written without it no longer verified once the intent had been decoded and
+// sent back; and the NA refuses null for it.
+func (d DataSourceDescriptor) MarshalJSON() ([]byte, error) {
+	type wire DataSourceDescriptor
+	w := wire(d)
+	if w.ClassificationTags == nil {
+		w.ClassificationTags = []string{}
+	}
+	return json.Marshal(w)
 }
 
 // DataLicensePolicy is returned by POST /admin/data-usage/policy and
