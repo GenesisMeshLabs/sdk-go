@@ -2,6 +2,7 @@ package genesismesh
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -157,5 +158,64 @@ func TestDataUsageClient_CreateIntent_WrongPath(t *testing.T) {
 	}
 	if _, ok := err.(*NotFoundError); !ok {
 		t.Errorf("want *NotFoundError, got %T: %v", err, err)
+	}
+}
+
+// A signed intent whose source has no classification tags still verifies
+// after it is decoded into a DataAccessIntent and sent back. Before v1.7.1
+// DataSourceDescriptor left out the empty classification_tags list, so the
+// intent sent back was no longer the one the agent signed, and the NA
+// answered intent_exceeds_license ("Invalid intent signature").
+func TestDataUsageClient_Verify_DecodedIntentWithEmptyTagsStillVerifies(t *testing.T) {
+	v := interopVector(t, "int-001") // a valid signed intent; its one source has classification_tags []
+	var intent DataAccessIntent
+	if err := json.Unmarshal(v.Input["intent"], &intent); err != nil {
+		t.Fatal(err)
+	}
+	if len(intent.DeclaredSources) != 1 || len(intent.DeclaredSources[0].ClassificationTags) != 0 {
+		t.Fatalf("vector int-001 changed: sources %+v", intent.DeclaredSources)
+	}
+	at, err := ParseTimestamp(text(t, v.Input["at"]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentKeys := strings_(t, v.Input["agent_public_keys"])
+
+	// The server checks the intent it receives as the NA does: against the
+	// agent's signature and the policy.
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Intent json.RawMessage `json:"intent"`
+			Policy json.RawMessage `json:"policy"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		res, err := VerifyDataAccessIntent(body.Intent, body.Policy, agentKeys, at)
+		if err != nil {
+			t.Error(err)
+		}
+		respondJSON(w, map[string]interface{}{"valid": res.Valid, "violation_reason": res.ViolationReason})
+	})
+	result, err := c.DataUsage.Verify(context.Background(), map[string]interface{}{
+		"intent": intent, "policy": v.Input["policy"],
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Valid {
+		t.Errorf("the decoded intent sent back does not verify: %+v", result)
+	}
+}
+
+// classification_tags is always a list: the NA refuses null for it.
+func TestDataSourceDescriptor_EmptyTagsAreAList(t *testing.T) {
+	data, err := json.Marshal(DataSourceDescriptor{SourceID: "src-a", SourceType: "public", OwnerSovereignID: "NA"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"source_id":"src-a","source_type":"public","owner_sovereign_id":"NA","classification_tags":[]}`
+	if string(data) != want {
+		t.Errorf("DataSourceDescriptor = %s, want %s", data, want)
 	}
 }
