@@ -152,3 +152,43 @@ func TestAgreementClient_Verify_Returns404Error(t *testing.T) {
 		t.Errorf("want *NotFoundError, got %T: %v", err, err)
 	}
 }
+
+// Accept sends {"offer": ...}, which the NA reads as an offer only: a counter
+// sent that way fails validation (422 accept_rejected). AcceptCounter sends
+// the counter and the offer it counters, as the NA's accept route reads them.
+func TestAgreementClient_AcceptCounter_SendsCounterAndOriginalOffer(t *testing.T) {
+	var path string
+	var body map[string]json.RawMessage
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		respondJSON(w, AgreementRecord{AgreementID: "agr-counter", OfferID: "counter-1"})
+	})
+	offer := &OfferRecord{OfferID: "offer-1", RequestedTerms: json.RawMessage(`{"capabilities":["read","write"]}`)}
+	counter := &OfferRecord{OfferID: "counter-1", AgreedTerms: json.RawMessage(`{"capabilities":["read"]}`)}
+	agreement, err := c.Agreement.AcceptCounter(context.Background(), counter, offer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if path != "/admin/agreements/accept" {
+		t.Errorf("path = %q, want /admin/agreements/accept", path)
+	}
+	if len(body) != 2 || body["counter"] == nil || body["original_offer"] == nil {
+		t.Fatalf("body keys = %v, want counter and original_offer", body)
+	}
+	var sentCounter, sentOffer OfferRecord
+	if err := json.Unmarshal(body["counter"], &sentCounter); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(body["original_offer"], &sentOffer); err != nil {
+		t.Fatal(err)
+	}
+	if sentCounter.OfferID != "counter-1" || sentOffer.OfferID != "offer-1" {
+		t.Errorf("counter = %q, original_offer = %q", sentCounter.OfferID, sentOffer.OfferID)
+	}
+	if agreement.AgreementID != "agr-counter" {
+		t.Errorf("agreement_id = %q", agreement.AgreementID)
+	}
+}
