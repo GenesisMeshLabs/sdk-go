@@ -8,7 +8,8 @@ type AttestationClient struct{ t *transport }
 // Issue issues a signed membership attestation.
 // POST /admin/attestations
 // roles must use recognised prefixes: role:anchor, role:bridge, role:client,
-// role:operator, role:service:<name>. Bare names return HTTP 422.
+// role:operator, role:service:<name>. The NA refuses a bare name with 400
+// invalid_role (a *BadRequestError).
 func (c *AttestationClient) Issue(ctx context.Context, body map[string]interface{}) (*MembershipAttestation, error) {
 	var out MembershipAttestation
 	return &out, c.t.adminPost(ctx, "/admin/attestations", body, &out)
