@@ -154,6 +154,18 @@ func TestLiveContract(t *testing.T) {
 	verified, err := c.Agreement.Verify(ctx, map[string]interface{}{"agreement": rawAgreement})
 	check("agreement_verify", verified, err)
 	accepted("agreement_verify", verified)
+	// v1.7.1: a counter-offer is accepted with the offer it counters.
+	fromCounter, err := c.Agreement.AcceptCounter(ctx, counter, offer)
+	if err != nil {
+		t.Fatalf("agreement_accept_counter: %v", err)
+	}
+	counterVerified, err := c.Agreement.Verify(ctx, map[string]interface{}{"agreement": fromCounter})
+	if err != nil || !counterVerified.Accepted {
+		t.Errorf("agreement_accept_counter: verify = %+v, %v", counterVerified, err)
+	}
+	if len(fromCounter.Capabilities) != 1 || fromCounter.Capabilities[0] != "read" {
+		t.Errorf("agreement_accept_counter: capabilities = %v, want the counter's [read]", fromCounter.Capabilities)
+	}
 
 	decision, err := c.Boundary.Decide(ctx, map[string]interface{}{"agreement": rawAgreement, "requested_capability": "read"})
 	rawDecision := check("boundary_decide", decision, err)

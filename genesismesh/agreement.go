@@ -23,11 +23,20 @@ func (c *AgreementClient) Counter(ctx context.Context, body map[string]interface
 // Accept accepts an offer.
 // POST /admin/agreements/accept with {"offer": ...}
 // Requires an active recognition treaty for the offer's responder_sovereign_id.
-// To accept a counter-offer, send {"counter": ..., "original_offer": ...} with
-// a raw admin call (see the README).
+// To accept a counter-offer, use AcceptCounter.
 func (c *AgreementClient) Accept(ctx context.Context, offer *OfferRecord) (*AgreementRecord, error) {
 	var out AgreementRecord
 	return &out, c.t.adminPost(ctx, "/admin/agreements/accept", map[string]interface{}{"offer": offer}, &out)
+}
+
+// AcceptCounter accepts a counter-offer (v1.7.1): counter is what Counter
+// returned, originalOffer the offer it counters.
+// POST /admin/agreements/accept with {"counter": ..., "original_offer": ...}
+// The NA refuses a counter sent to Accept as an offer (422 accept_rejected).
+func (c *AgreementClient) AcceptCounter(ctx context.Context, counter, originalOffer *OfferRecord) (*AgreementRecord, error) {
+	var out AgreementRecord
+	return &out, c.t.adminPost(ctx, "/admin/agreements/accept",
+		map[string]interface{}{"counter": counter, "original_offer": originalOffer}, &out)
 }
 
 // Verify verifies agreement signatures (public route).

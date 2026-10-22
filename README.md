@@ -190,8 +190,14 @@ result, err := client.Agreement.Verify(ctx, map[string]interface{}{"agreement": 
 ```
 
 `Accept` sends `{"offer": ...}` and accepts an offer only. To accept a
-counter-offer, send `{"counter": ..., "original_offer": ...}` to
-`POST /admin/agreements/accept` with a raw admin call (see
+counter-offer, use `AcceptCounter` (from 1.7.1) with the counter and the offer
+it answers; it needs a privileged key:
+
+```go
+agreement, err := client.Agreement.AcceptCounter(ctx, counter, offer)
+```
+
+With 1.7.0, send the same body with a raw admin call (see
 [Raw admin calls](#raw-admin-calls)).
 
 ### Boundary
@@ -550,8 +556,9 @@ err = adminPost(ctx, os.Getenv("CONTROLLER_KEY"), "controller", "/admin/boundary
 	map[string]interface{}{"agreement": agreement, "requested_capability": "read:data"}, &evaluated)
 ```
 
-Accept a counter-offer (privileged). `counter` is what `Agreement.Counter`
-returned and `offer` the offer it counters:
+Accept a counter-offer on 1.7.0, before `AcceptCounter` (privileged).
+`counter` is what `Agreement.Counter` returned and `offer` the offer it
+counters:
 
 ```go
 var fromCounter genesismesh.AgreementRecord
