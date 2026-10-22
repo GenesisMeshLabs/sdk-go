@@ -22,7 +22,8 @@ itself — those are tracked in the
 Vulnerabilities in scope:
 
 - Incorrect Ed25519 signature construction or verification
-- `canonicalJSON` producing incorrect output that could allow signature bypass
+- Canonical JSON (`CanonicalJSON` and the admin signing payload) producing incorrect output that could allow signature bypass
+- Offline verifiers (`VerifyBoundaryDecision`, `VerifyAgreement`, `VerifyKeyHistory`, `VerifyCapabilityGrant`, ...) accepting a record they should refuse
 - Admin header building that leaks the signing key or produces forgeable headers
 - Error handling that leaks internal server details to callers
 - Dependency vulnerabilities in the published module
@@ -43,8 +44,10 @@ Use GitHub's private vulnerability reporting:
 2. Click **Report a vulnerability**
 3. Fill in the report form
 
-You will receive a response within 72 hours. We aim to release a fix within
-14 days for critical issues and 30 days for moderate issues.
+You should receive acknowledgement within **5 business days**. Expect a
+remediation plan within **30 days** for confirmed issues, longer for
+cryptographic findings that require a redesign. This is the same promise as
+the [core's security policy](https://github.com/GenesisMeshLabs/genesismesh/blob/main/SECURITY.md).
 
 Please include:
 

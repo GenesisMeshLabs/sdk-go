@@ -210,6 +210,12 @@ func TestLiveContract(t *testing.T) {
 	usage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": rawIntent, "policy": rawPolicy})
 	check("data_usage_verify", usage, err)
 	accepted("data_usage_verify", usage)
+	// v1.7.1: the decoded intent, whose source has no classification tags,
+	// still verifies when it is sent back.
+	decodedUsage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": intent, "policy": policy})
+	if err != nil || !decodedUsage.Accepted {
+		t.Errorf("data_usage_verify (decoded intent): %+v, %v; the NA answered %s", decodedUsage, err, rec.body())
+	}
 
 	vote, err := c.Consensus.Vote(ctx, map[string]interface{}{"justification_proof": in.JustificationProof, "vote": true, "reason": "contract"})
 	rawVote := check("consensus_vote", vote, err)
@@ -233,6 +239,13 @@ func TestLiveContract(t *testing.T) {
 			"public_keys": []string{in.NAPublicKey}, "allowed_roles": []string{"role:client"}, "accepted_statuses": []string{"active"}}},
 		"revoked_attestation_ids": []string{}}})
 	check("attestation_save_policy", nil, err)
+	// v1.7.1: the typed RecognitionPolicy is a body the NA accepts.
+	err = c.Attestation.SavePolicy(ctx, map[string]interface{}{"recognition_policy": RecognitionPolicy{
+		LocalSovereignID: in.NetworkName, RecognizedIssuers: []RecognizedIssuer{{SovereignID: in.NetworkName,
+			PublicKeys: []string{in.NAPublicKey}, AllowedRoles: []string{"role:client"}}}}})
+	if err != nil {
+		t.Fatalf("attestation_save_policy (RecognitionPolicy): %v", err)
+	}
 	err = c.Attestation.Revoke(ctx, attestation.AttestationID, map[string]interface{}{"reason": "contract"})
 	check("attestation_revoke", nil, err)
 

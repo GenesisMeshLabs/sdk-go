@@ -2,8 +2,8 @@ package genesismesh
 
 // Offline verification (v0.61): check signed Genesis Mesh artifacts without
 // calling the Network Authority. Each function is a port of the Python
-// reference and returns the same reason codes, so a Go verifier and the NA
-// agree on every decision (checked by the shared conformance vectors).
+// reference and returns its reason codes. The shared conformance vectors
+// check that they agree on the cases the vectors cover.
 //
 // Pass artifacts as the JSON received from the NA or the signer. Signatures
 // cover the canonical form of exactly what was signed; re-encoding through a
@@ -209,7 +209,8 @@ func agreementCanonical(obj object) (string, error) {
 // VerifyAgreement checks an AgreementRecord's dual signatures (and optional graph binding).
 // expectedGraphDigest "" skips the graph check. Reasons: accepted,
 // missing_offerer_signature, invalid_offerer_signature, missing_responder_signature,
-// invalid_responder_signature, graph_digest_mismatch.
+// invalid_responder_signature, graph_digest_mismatch, then unknown_field and
+// non_canonical_form (v1.2.0).
 func VerifyAgreement(agreementJSON []byte, offererKeys, responderKeys []string, expectedGraphDigest string) (AgreementVerification, error) {
 	obj, err := decodeObject(agreementJSON, "agreement")
 	if err != nil {

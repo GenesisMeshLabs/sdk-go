@@ -89,7 +89,8 @@ Every public method needs tests in `genesismesh/client_test.go` (or a dedicated
 
 1. Happy-path — `httptest.NewServer` returns the correct shape
 2. URL — method calls the correct route path
-3. Auth — admin methods require a signing key (`ErrNoSigningKey` without one)
+3. Auth — admin methods return an error without a signing key ("signing key
+   required for admin route")
 4. Error — an NA error status → its typed SDK error with the correct `.Code`
    (use a status and code the NA really sends)
 

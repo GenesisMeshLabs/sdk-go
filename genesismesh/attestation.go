@@ -8,7 +8,8 @@ type AttestationClient struct{ t *transport }
 // Issue issues a signed membership attestation.
 // POST /admin/attestations
 // roles must use recognised prefixes: role:anchor, role:bridge, role:client,
-// role:operator, role:service:<name>. Bare names return HTTP 422.
+// role:operator, role:service:<name>. The NA refuses a bare name with 400
+// invalid_role (a *BadRequestError).
 func (c *AttestationClient) Issue(ctx context.Context, body map[string]interface{}) (*MembershipAttestation, error) {
 	var out MembershipAttestation
 	return &out, c.t.adminPost(ctx, "/admin/attestations", body, &out)
@@ -29,7 +30,9 @@ func (c *AttestationClient) Revoke(ctx context.Context, attestationID string, bo
 
 // SavePolicy sets the active recognition policy.
 // POST /admin/recognition-policy
-// body.recognition_policy must have local_sovereign_id and recognized_issuers.
+// body.recognition_policy is the policy: a RecognitionPolicy, or a map with
+// local_sovereign_id and recognized_issuers (each with sovereign_id and
+// public_keys).
 func (c *AttestationClient) SavePolicy(ctx context.Context, body map[string]interface{}) error {
 	return c.t.adminPost(ctx, "/admin/recognition-policy", body, nil)
 }
