@@ -339,7 +339,8 @@ type ConsensusVerification struct {
 }
 
 // DataSourceDescriptor describes a data source in a DataAccessIntent.
-// All three fields are required by the NA; missing any returns HTTP 422.
+// All three fields are required: the NA refuses a source without them with
+// 400 invalid_source (a *BadRequestError).
 type DataSourceDescriptor struct {
 	SourceID             string   `json:"source_id"`
 	SourceType           string   `json:"source_type"` // "personal"|"proprietary"|"public"|"synthetic"

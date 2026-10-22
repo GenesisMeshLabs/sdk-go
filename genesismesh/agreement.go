@@ -20,9 +20,11 @@ func (c *AgreementClient) Counter(ctx context.Context, body map[string]interface
 	return &out, c.t.adminPost(ctx, "/admin/agreements/counter", body, &out)
 }
 
-// Accept accepts an offer or counter-offer.
-// POST /admin/agreements/accept
+// Accept accepts an offer.
+// POST /admin/agreements/accept with {"offer": ...}
 // Requires an active recognition treaty for the offer's responder_sovereign_id.
+// To accept a counter-offer, send {"counter": ..., "original_offer": ...} with
+// a raw admin call (see the README).
 func (c *AgreementClient) Accept(ctx context.Context, offer *OfferRecord) (*AgreementRecord, error) {
 	var out AgreementRecord
 	return &out, c.t.adminPost(ctx, "/admin/agreements/accept", map[string]interface{}{"offer": offer}, &out)

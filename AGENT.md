@@ -110,10 +110,10 @@ These are non-obvious and not in the HTTP reference. Tests must cover them.
 
 | Constraint | Detail |
 |-----------|--------|
-| Evidence verdict | Must be `"allow"` \| `"block"` \| `"escalate"` \| `"warn"`. The value `"trusted"` is invalid. |
-| Role prefixes | Roles must start with `role:anchor`, `role:bridge`, `role:client`, `role:operator`, or `role:service:<name>`. Bare names return 422. |
+| Evidence verdict | Must be `"allow"` \| `"block"` \| `"escalate"` \| `"warn"`. The NA refuses another value, such as `"trusted"`, with 400 `invalid_verdict`. |
+| Role prefixes | Roles must start with `role:anchor`, `role:bridge`, `role:client`, `role:operator`, or `role:service:<name>`. The NA refuses a bare name with 400 `invalid_role`. |
 | Agreement accept | Requires the NA to hold an active recognition treaty for the `responder_sovereign_id`. Issue it via `POST /admin/recognition-treaties` first. |
-| `DataSourceDescriptor` | `source_id`, `source_type` (`"personal"` \| `"proprietary"` \| `"public"` \| `"synthetic"`), and `owner_sovereign_id` are all required. Missing any returns HTTP 422. |
+| `DataSourceDescriptor` | `source_id`, `source_type` (`"personal"` \| `"proprietary"` \| `"public"` \| `"synthetic"`), and `owner_sovereign_id` are all required. The NA refuses a source without them with 400 `invalid_source`. |
 
 ---
 
