@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// v1.7.1: a caller-supplied value interpolated into a request path is one
+// v1.8.0: a caller-supplied value interpolated into a request path is one
 // path segment, or the call fails before anything is signed or sent. Before,
 // Revoke("../../recognition-policy") signed and sent a request to another
 // admin route, and "a/b" or "x?y" changed the path the NA routed on.

@@ -243,7 +243,7 @@ type RecognizedIssuer struct {
 	AcceptedStatuses []string `json:"accepted_statuses,omitempty"`
 
 	// Deprecated: use SovereignID. The NA never read issuer_sovereign_id, so a
-	// policy built with it was refused (v1.7.1). It is filled in when decoding
+	// policy built with it was refused (v1.8.0). It is filled in when decoding
 	// and sent as sovereign_id when SovereignID is empty.
 	IssuerSovereignID string `json:"-"`
 }
@@ -387,7 +387,7 @@ type DataSourceDescriptor struct {
 }
 
 // MarshalJSON writes classification_tags as a list, [] when there are none
-// (v1.7.1). The NA signs an intent's sources with the list, so a source
+// (v1.8.0). The NA signs an intent's sources with the list, so a source
 // written without it no longer verified once the intent had been decoded and
 // sent back; and the NA refuses null for it.
 func (d DataSourceDescriptor) MarshalJSON() ([]byte, error) {

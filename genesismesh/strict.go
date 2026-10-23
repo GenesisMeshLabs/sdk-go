@@ -59,7 +59,7 @@ func mustLoadRegistry(raw []byte) registryDoc {
 // (not the signature, not an agreement's unsigned fields); free-form fields are
 // not inspected; values of the wrong type are left to validation.
 //
-// A model the registry does not define is an error (v1.7.1): before, it
+// A model the registry does not define is an error (v1.8.0): before, it
 // returned no fields, so a misspelt or renamed model turned the check off.
 func UnknownFields(model string, recordJSON []byte) ([]string, error) {
 	if _, ok := canonicalRegistry.Models[model]; !ok {
@@ -79,7 +79,7 @@ func errUnknownModel(model string) error {
 }
 
 // anyField is the path reported, under a record's own path, for a record whose
-// model the registry does not define (v1.7.1): none of its fields is known, so
+// model the registry does not define (v1.8.0): none of its fields is known, so
 // the strict checks refuse it rather than pass it unchecked.
 const anyField = "*"
 

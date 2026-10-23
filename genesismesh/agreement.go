@@ -29,7 +29,7 @@ func (c *AgreementClient) Accept(ctx context.Context, offer *OfferRecord) (*Agre
 	return &out, c.t.adminPost(ctx, "/admin/agreements/accept", map[string]interface{}{"offer": offer}, &out)
 }
 
-// AcceptCounter accepts a counter-offer (v1.7.1): counter is what Counter
+// AcceptCounter accepts a counter-offer (v1.8.0): counter is what Counter
 // returned, originalOffer the offer it counters.
 // POST /admin/agreements/accept with {"counter": ..., "original_offer": ...}
 // The NA refuses a counter sent to Accept as an offer (422 accept_rejected).

@@ -59,7 +59,7 @@ func newTransport(opts ClientOptions) (*transport, error) {
 }
 
 // pathSegment returns value when it can stand as one segment of a request
-// path, and a *PathSegmentError otherwise (v1.7.1). The NA routes on the
+// path, and a *PathSegmentError otherwise (v1.8.0). The NA routes on the
 // decoded path and admin signatures cover it, so a value is checked, not
 // escaped: "/", "?", "#" and "%" would change the route or what the NA reads,
 // "." and ".." are path steps, and control characters do not belong in a URL.

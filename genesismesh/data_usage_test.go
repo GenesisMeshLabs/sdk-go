@@ -162,7 +162,7 @@ func TestDataUsageClient_CreateIntent_WrongPath(t *testing.T) {
 }
 
 // A signed intent whose source has no classification tags still verifies
-// after it is decoded into a DataAccessIntent and sent back. Before v1.7.1
+// after it is decoded into a DataAccessIntent and sent back. Before v1.8.0
 // DataSourceDescriptor left out the empty classification_tags list, so the
 // intent sent back was no longer the one the agent signed, and the NA
 // answered intent_exceeds_license ("Invalid intent signature").

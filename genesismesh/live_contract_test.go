@@ -154,7 +154,7 @@ func TestLiveContract(t *testing.T) {
 	verified, err := c.Agreement.Verify(ctx, map[string]interface{}{"agreement": rawAgreement})
 	check("agreement_verify", verified, err)
 	accepted("agreement_verify", verified)
-	// v1.7.1: a counter-offer is accepted with the offer it counters.
+	// v1.8.0: a counter-offer is accepted with the offer it counters.
 	fromCounter, err := c.Agreement.AcceptCounter(ctx, counter, offer)
 	if err != nil {
 		t.Fatalf("agreement_accept_counter: %v", err)
@@ -210,7 +210,7 @@ func TestLiveContract(t *testing.T) {
 	usage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": rawIntent, "policy": rawPolicy})
 	check("data_usage_verify", usage, err)
 	accepted("data_usage_verify", usage)
-	// v1.7.1: the decoded intent, whose source has no classification tags,
+	// v1.8.0: the decoded intent, whose source has no classification tags,
 	// still verifies when it is sent back.
 	decodedUsage, err := c.DataUsage.Verify(ctx, map[string]interface{}{"intent": intent, "policy": policy})
 	if err != nil || !decodedUsage.Accepted {
@@ -239,7 +239,7 @@ func TestLiveContract(t *testing.T) {
 			"public_keys": []string{in.NAPublicKey}, "allowed_roles": []string{"role:client"}, "accepted_statuses": []string{"active"}}},
 		"revoked_attestation_ids": []string{}}})
 	check("attestation_save_policy", nil, err)
-	// v1.7.1: the typed RecognitionPolicy is a body the NA accepts.
+	// v1.8.0: the typed RecognitionPolicy is a body the NA accepts.
 	err = c.Attestation.SavePolicy(ctx, map[string]interface{}{"recognition_policy": RecognitionPolicy{
 		LocalSovereignID: in.NetworkName, RecognizedIssuers: []RecognizedIssuer{{SovereignID: in.NetworkName,
 			PublicKeys: []string{in.NAPublicKey}, AllowedRoles: []string{"role:client"}}}}})

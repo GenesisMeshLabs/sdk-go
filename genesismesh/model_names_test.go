@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// v1.7.1: a model name the embedded registry does not define fails closed at
+// v1.8.0: a model name the embedded registry does not define fails closed at
 // run time (strict.go). This test makes such a name fail CI first: every model
 // name the source passes to a function taking a `model string` first, or
 // looks up in the registry, must be a model of the registry. A core rename or
