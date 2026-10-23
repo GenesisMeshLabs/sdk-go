@@ -87,12 +87,12 @@ shared wire naming convention makes cross-language debugging tractable.
 `{ "error": { "message": "...", "code": "..." } }`. If the format changes,
 **return an error**, do not silently produce a misleading result.
 
-Every status maps to a typed error that is an `APIError` (v1.7.1): 400, 401,
+Every status maps to a typed error that is an `APIError` (v1.8.0): 400, 401,
 403, 404, 409, 413, 422 and 429 have their own types, any other 4xx is a
 `ClientError`, and only a 5xx is a `ServerError` (a caller may retry it).
 Never swallow a status, and never map a 4xx to `ServerError`.
 
-A model name the field registry does not define fails closed (v1.7.1):
+A model name the field registry does not define fails closed (v1.8.0):
 `UnknownFields` returns an error and the strict checks refuse the record.
 `TestEveryModelNameInTheSourceIsInTheRegistry` checks every model literal.
 

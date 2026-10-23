@@ -117,7 +117,7 @@ func TestParseErrorResponse_503(t *testing.T) {
 	}
 }
 
-// v1.7.1: a 4xx is never a ServerError. Before, a 403 (insufficient_operator_tier),
+// v1.8.0: a 4xx is never a ServerError. Before, a 403 (insufficient_operator_tier),
 // a 409 (boundary_policy_required) or a 413 came back as ServerError, so a
 // policy retrying server errors retried a request that could not succeed.
 func TestOnlyA5xxIsAServerError(t *testing.T) {

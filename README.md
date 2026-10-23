@@ -6,7 +6,7 @@ Go SDK for the Genesis Mesh Network Authority HTTP API.
 
 ## Scope
 
-This SDK (1.7) covers the Network Authority's trust API: the sub-clients
+This SDK (1.8) covers the Network Authority's trust API: the sub-clients
 below (agreements, boundary decisions, trust evidence, attestations,
 selective disclosure, consensus and data usage), offline verification of
 their signed records, and signed admin calls to any other route. It has no
@@ -190,7 +190,7 @@ result, err := client.Agreement.Verify(ctx, map[string]interface{}{"agreement": 
 ```
 
 `Accept` sends `{"offer": ...}` and accepts an offer only. To accept a
-counter-offer, use `AcceptCounter` (from 1.7.1) with the counter and the offer
+counter-offer, use `AcceptCounter` (from 1.8.0) with the counter and the offer
 it answers; it needs a privileged key:
 
 ```go
@@ -267,7 +267,7 @@ err = client.Attestation.SavePolicy(ctx, map[string]interface{}{
 
 A role without a recognized prefix is refused with 400 `invalid_role`.
 
-From 1.7.1, `Revoke` refuses an ID that is not one path segment (empty, `.`,
+From 1.8.0, `Revoke` refuses an ID that is not one path segment (empty, `.`,
 `..`, or containing `/`, `?`, `#`, `%` or a control character) with a
 `*PathSegmentError`, before anything is signed or sent.
 
@@ -571,7 +571,7 @@ err = adminPost(ctx, os.Getenv("OPERATOR_KEY"), "operator-local", "/admin/agreem
 Every HTTP error response from the NA comes back as a typed error, and every
 one of them is a `genesismesh.APIError` (its `StatusCode()` and `ErrorCode()`).
 
-From 1.7.1. In 1.7.0 and earlier, 403, 409, 413 and any other status without
+From 1.8.0. In 1.7.0 and earlier, 403, 409, 413 and any other status without
 its own type are `ServerError`, and there is no `APIError`, `ForbiddenError`,
 `ConflictError`, `PayloadTooLargeError` or `ClientError`.
 

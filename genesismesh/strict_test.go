@@ -397,7 +397,7 @@ func TestTextThatIsNotUTF8IsRefusedFirst(t *testing.T) {
 	}
 }
 
-// v1.7.1: a model the registry does not define fails closed. Before, a
+// v1.8.0: a model the registry does not define fails closed. Before, a
 // misspelt model returned no unknown fields, so the strict check was off for
 // that verifier: UnknownFields("BoundaryDecison", ...) returned [] where the
 // correct name returned [smuggled].

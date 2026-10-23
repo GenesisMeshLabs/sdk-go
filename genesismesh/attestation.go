@@ -19,7 +19,7 @@ func (c *AttestationClient) Issue(ctx context.Context, body map[string]interface
 // POST /admin/attestations/{id}/revoke
 // An attestationID that is not a single path segment (empty, ".", "..", or
 // containing "/", "?", "#", "%" or a control character) returns a
-// *PathSegmentError before anything is signed or sent (v1.7.1).
+// *PathSegmentError before anything is signed or sent (v1.8.0).
 func (c *AttestationClient) Revoke(ctx context.Context, attestationID string, body map[string]interface{}) error {
 	id, err := pathSegment("attestation_id", attestationID)
 	if err != nil {

@@ -7,6 +7,100 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.8.0] - 2026-10-23
+
+### Security
+
+- **An attestation ID is one path segment.** `Attestation.Revoke` put the
+  ID into the request path as given, so an ID containing `/`, `..`, `?` or
+  `#` (for example `../../recognition-policy`) signed and sent a request to
+  another admin route or with another path. An ID that is empty, `.` or `..`,
+  or contains `/`, `?`, `#`, `%` or a control character is now refused with a
+  `*PathSegmentError` before anything is signed or sent. No other client
+  method puts a caller-supplied value into a request path.
+
+### Added
+
+- **`Agreement.AcceptCounter`** accepts a counter-offer: it sends
+  `{"counter": ..., "original_offer": ...}` to
+  `POST /admin/agreements/accept`, with the counter `Counter` returned and
+  the offer it counters. Needs a privileged key.
+- **`ForbiddenError`, `ConflictError`, `PayloadTooLargeError` and
+  `ClientError`.** A 403 (such as `insufficient_operator_tier`), a 409 (such
+  as `boundary_policy_required`) and a 413 (`request_entity_too_large`) have
+  their own types, and any other 4xx is a `ClientError`.
+- **`APIError`**, an interface every error for an NA error response
+  implements (`StatusCode()`, `ErrorCode()`), so a caller can read the status
+  and code with one `errors.As`, whatever the type.
+- **`PathSegmentError`** (`Param`, `Value`, `Reason`): a caller-supplied
+  value refused as a request path segment. It is not an `APIError`, since no
+  request was sent.
+
+### Fixed
+
+- **A counter-offer could not be accepted.** `Accept` said it accepted an
+  offer or a counter-offer, but it always sends `{"offer": ...}`, and the NA
+  refuses a counter sent that way (422 `accept_rejected`). `Accept` now says
+  it takes an offer only; use `AcceptCounter` for a counter-offer.
+- **A 4xx is no longer a `ServerError`.** Every status without a type of its
+  own came back as `ServerError`, so a policy that retries server errors
+  retried a 403, 409 or 413 that could never succeed. `ServerError` is now
+  only a 5xx.
+- **README examples that compile and that a governed NA accepts.** The
+  quick start called `Boundary.Decide` with fields the NA does not read, and
+  a Network Authority that requires boundary policies refuses `Decide` with
+  409 `boundary_policy_required`. It now issues an attestation with the
+  privileged key and asks for a policy-aware decision
+  (`POST /admin/boundary/evaluate`) with the controller's standard key,
+  through a signed raw admin call. The Agreement, Attestation, Disclosure and
+  DataUsage examples passed typed structs where the methods take maps, or
+  left out fields the NA requires; they now use the bodies the NA accepts.
+  The README says which methods need a privileged key, that `Accept` takes an
+  offer only, how to accept a counter-offer, and how to call `evaluate`.
+- **Status codes in doc comments.** A bare role, a bad verdict and a bad data
+  source are refused with 400 (`invalid_role`, `invalid_verdict`,
+  `invalid_source`), not 422.
+- **`RecognitionPolicy` and `RecognizedIssuer` are the NA's wire format.**
+  `RecognizedIssuer` wrote `issuer_sovereign_id` and had no public keys, so
+  the NA refused every recognition policy built from these types with 422
+  `invalid_recognition_policy`. It now writes `sovereign_id` and
+  `public_keys` (required, at least one), with `allowed_roles` and
+  `accepted_statuses`; `RecognitionPolicy` gains `revoked_attestation_ids`.
+  Its doc comment no longer calls it the request body: pass it to
+  `Attestation.SavePolicy` as `{"recognition_policy": policy}`.
+- **A decoded data access intent verifies when sent back.**
+  `DataSourceDescriptor` left out an empty `classification_tags` list when
+  it was encoded, but the agent signs each source with the list. So an
+  intent whose sources had no tags, decoded into a `DataAccessIntent` and
+  sent back to `DataUsage.Verify`, failed its signature check
+  (`intent_exceeds_license`, "Invalid intent signature"). An empty or nil
+  `ClassificationTags` is now written as `[]`.
+- **An unknown model name fails closed.** `UnknownFields` returned no fields
+  for a model the field registry does not define, so a misspelt or renamed
+  model turned the strict check off. It now returns an error, and the
+  verifiers' strict checks refuse a record of such a model. A test checks
+  that every model name in the source is in the embedded registry, and that
+  every model the registry nests is too.
+
+### Upgrading
+
+- Code that matched `*ServerError` to catch a 403, 409, 413 or another 4xx no
+  longer catches it: match `*ForbiddenError`, `*ConflictError`,
+  `*PayloadTooLargeError` or `*ClientError`, or match `APIError` and read
+  `StatusCode()`. Code that retries on `*ServerError` now retries only 5xx
+  responses, as intended. The typed errors for 400, 401, 404, 422 and 429,
+  their fields and their messages are unchanged.
+- `Attestation.Revoke` returns a `*PathSegmentError` for an ID it used to
+  send. The NA's attestation IDs are UUIDs and are unaffected; only an ID
+  taken from untrusted input could now fail, and it would have reached
+  another route before.
+- `RecognizedIssuer.IssuerSovereignID` is deprecated: set `SovereignID` and
+  `PublicKeys`. A value left in `IssuerSovereignID` is still sent, as
+  `sovereign_id`, when `SovereignID` is empty.
+- `UnknownFields` returns an error for a model name the embedded registry
+  does not define, where it returned an empty list. Pass a model name of the
+  registry (such as `BoundaryDecision`); the verifiers are unaffected.
+
 ## [1.7.0] - 2026-10-15
 
 ### Changed

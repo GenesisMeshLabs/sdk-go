@@ -16,15 +16,15 @@ func (e *GenesisMeshError) Error() string {
 	return fmt.Sprintf("genesismesh: HTTP %d %s: %s", e.Status, e.Code, e.Message)
 }
 
-// StatusCode returns the HTTP status the NA answered with (v1.7.1).
+// StatusCode returns the HTTP status the NA answered with (v1.8.0).
 func (e *GenesisMeshError) StatusCode() int { return e.Status }
 
 // ErrorCode returns the NA's error code, such as "insufficient_operator_tier"
-// ("" when the response had no Genesis Mesh error body) (v1.7.1).
+// ("" when the response had no Genesis Mesh error body) (v1.8.0).
 func (e *GenesisMeshError) ErrorCode() string { return e.Code }
 
 // APIError is implemented by every error the client returns for an HTTP error
-// response from the NA, whatever its type (v1.7.1): match it with errors.As to
+// response from the NA, whatever its type (v1.8.0): match it with errors.As to
 // read the status and the code without naming each type. A NetworkError is
 // not an APIError: no response came back.
 type APIError interface {
@@ -42,7 +42,7 @@ func (e *NetworkError) Error() string { return fmt.Sprintf("genesismesh: network
 func (e *NetworkError) Unwrap() error { return e.Cause }
 
 // PathSegmentError is a caller-supplied value refused as a segment of a
-// request path (v1.7.1), such as an attestation ID containing "/" or "..":
+// request path (v1.8.0), such as an attestation ID containing "/" or "..":
 // it would sign and call another route. It is returned before any request is
 // signed or sent, so it is not an APIError.
 type PathSegmentError struct {
@@ -67,24 +67,24 @@ type (
 	BadRequestError struct{ GenesisMeshError }
 	// UnauthorizedError is a 401, such as "admin_auth_failed".
 	UnauthorizedError struct{ GenesisMeshError }
-	// ForbiddenError is a 403 (v1.7.1): the request was authenticated, and
+	// ForbiddenError is a 403 (v1.8.0): the request was authenticated, and
 	// its key may not do this, such as "insufficient_operator_tier".
 	ForbiddenError struct{ GenesisMeshError }
 	// NotFoundError is a 404.
 	NotFoundError struct{ GenesisMeshError }
-	// ConflictError is a 409 (v1.7.1): the NA's state refuses the request,
+	// ConflictError is a 409 (v1.8.0): the NA's state refuses the request,
 	// such as "boundary_policy_required".
 	ConflictError struct{ GenesisMeshError }
-	// PayloadTooLargeError is a 413 (v1.7.1): the body is over the NA's
+	// PayloadTooLargeError is a 413 (v1.8.0): the body is over the NA's
 	// request size limit ("request_entity_too_large").
 	PayloadTooLargeError struct{ GenesisMeshError }
 	// ValidationError is a 422.
 	ValidationError struct{ GenesisMeshError }
 	// RateLimitError is a 429.
 	RateLimitError struct{ GenesisMeshError }
-	// ClientError is any other 4xx (v1.7.1), such as a 405.
+	// ClientError is any other 4xx (v1.8.0), such as a 405.
 	ClientError struct{ GenesisMeshError }
-	// ServerError is a 5xx. Before v1.7.1 it was also every status without a
+	// ServerError is a 5xx. Before v1.8.0 it was also every status without a
 	// type of its own, so a 403, 409 or 413 read as a server error.
 	ServerError struct{ GenesisMeshError }
 )

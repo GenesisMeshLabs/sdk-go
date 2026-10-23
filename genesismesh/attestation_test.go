@@ -127,7 +127,7 @@ func TestAttestationClient_SavePolicy_WrongPath(t *testing.T) {
 }
 
 // A RecognitionPolicy is sent as the NA's RecognitionPolicy: each issuer as
-// sovereign_id with its public_keys. Before v1.7.1 the type wrote
+// sovereign_id with its public_keys. Before v1.8.0 the type wrote
 // issuer_sovereign_id and had no public keys, so the NA refused every policy
 // built from it (422 invalid_recognition_policy).
 func TestAttestationClient_SavePolicy_RecognitionPolicyWireShape(t *testing.T) {
