@@ -19,6 +19,7 @@ var conformanceRunners = map[string][]string{
 	"consensus":      {"TestConsensusTypesRoundTripPythonProof"},
 	"field_registry": {"TestConformanceFieldRegistryVectors"},
 	"grants":         {"TestConformanceGrantsVectors"},
+	"vouching":       {"TestConformanceVouchingVectors"},
 	"interop":        {"TestConformanceInteropVectors"},
 }
 
