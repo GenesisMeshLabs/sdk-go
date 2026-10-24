@@ -440,6 +440,31 @@ core's cross-language scenario (`interop/`) also has them verify agreements,
 decisions, a license policy and an intent that a live NA signs, on every pull
 request and push to the core's `main`.
 
+#### The vouching horizon (1.8.0)
+
+Judged at its own time, a record names the key that signed it. But whoever
+kept a succeeded key could still sign a record dated inside that key's
+window. So, judged **for the present**, a record of a key that has ended
+vouches only until that key's horizon: its end, the 300-second hand-over
+and a grace of at most 24 hours (`SuccessionVouchingGrace`). The NA
+re-issues what is still valid under the new key.
+
+```go
+h.History.RecordOutlivesKey(publicKey, time.Now()) // past its horizon?
+h.History.KeysVouchingAt(issuedAt, time.Now())     // KeysAt without the keys past their horizon
+reason, err := genesismesh.NARecordRefusal("MembershipAttestation", recordJSON, h.History, &now)
+// "" when it vouches; otherwise "outlives_key", "record_malformed", "na_key_not_valid_at_time",
+// "invalid_signature", "unknown_field" or "non_canonical_form".
+```
+
+`VerifyKeyHistoryResponse` takes the NA's `vouching_grace_seconds` only to
+shorten the grace; `WithVouchingGrace` does the same for a history you hold.
+`NARecordRefusal` covers attestations, treaties, revocation feeds and grants,
+and passes the shared `vouching` suite
+(`genesismesh/testdata/conformance/vouching.json`). Upgrade the NA to 1.8.0
+first and let it re-issue (`reissue_pending: false` on its `/readyz`) before
+judging records for the present.
+
 ### Pre-issued grants
 
 From 1.6.0 the NA can issue a `CapabilityGrant` before the bearer acts, so
@@ -452,6 +477,8 @@ grant's `issued_at`, with every signed field known and in canonical form.
 g, err := genesismesh.VerifyCapabilityGrant(grantJSON, h.History) // or NAKeysValidAlways([]string{naKey})
 // g.Valid; otherwise g.Reason: "missing_signature", "invalid_signature", "unknown_field",
 // "non_canonical_form" or "na_key_not_valid_at_time".
+g, err = genesismesh.VerifyCapabilityGrantAt(grantJSON, h.History, time.Now())
+// 1.8.0: also "outlives_key" once the grant's key has passed its vouching horizon.
 ```
 
 It does not check the grant's validity, budget, parameter envelope or

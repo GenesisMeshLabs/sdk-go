@@ -22,7 +22,8 @@ says what is and is not covered.
 | `strict.go` | registry | the embedded field registry (`canonical_registry.json`), `UnknownFields`, canonical timestamps and forms |
 | `verify.go` | verifiers | `VerifyBoundaryDecision`, `VerifyAgreement`, data-usage policy and intent checks, shared record helpers |
 | `key_history.go` | verifiers | `VerifyKeyHistory`, `NAKeyHistory`, `NARecordTimeFields` |
-| `grants.go` | verifiers | `VerifyCapabilityGrant` |
+| `grants.go` | verifiers | `VerifyCapabilityGrant`, `VerifyCapabilityGrantAt` (1.8.0) |
+| `vouching.go` | verifiers | `NARecordRefusal`, `NAVouchingTimeFields` (1.8.0) |
 | `auth.go` | signing | `LoadPrivateKey`, `AdminSigningPayload`, `BuildAdminHeaders` (Ed25519) |
 | `types.go` | protocol | wire structs (snake_case JSON tags) and their `UnmarshalJSON` methods |
 | `errors.go` | protocol | typed API errors (`APIError`, one type per status class), `parseErrorResponse` |
@@ -50,7 +51,7 @@ verifiers, signing) import no `net` package.
 |---|---|---|
 | json | `strict_json.go`, `canonical.go` | (nothing) |
 | registry | `strict.go` | json |
-| verifiers | `verify.go`, `key_history.go`, `grants.go` | json, registry |
+| verifiers | `verify.go`, `key_history.go`, `grants.go`, `vouching.go` | json, registry |
 | signing | `auth.go` | json |
 | protocol | `types.go`, `errors.go` | (nothing) |
 | transport | `transport.go` | json, signing, protocol |
@@ -126,7 +127,7 @@ missed. Every change also adds a fragment `changelog.d/<version>/<name>.md`
    then run `python scripts/sync_canonical_registry.py`.
    `TestConformanceFieldRegistryIsEmbedded` fails until the embedded registry
    matches the suite.
-2. The verifier in `verify.go`, `key_history.go`, `grants.go` or a new file of
+2. The verifier in `verify.go`, `key_history.go`, `grants.go`, `vouching.go` or a new file of
    the verifiers layer (and `TestArchitectureLayers`' table). Model names are
    string literals: `TestEveryModelNameInTheSourceIsInTheRegistry` fails for a
    name the registry lacks. Hand tables copied from the registry are checked

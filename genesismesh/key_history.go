@@ -24,6 +24,13 @@ package genesismesh
 // vouches for a decision only while the decision expires no later than that
 // end, the hand-over and MaxDecisionLifetime (decision_outlives_key).
 //
+// The vouching horizon (1.8.0): judged for the present, a record signed by a
+// key that has ended vouches only until that key's end, the hand-over and a
+// grace of at most SuccessionVouchingGrace (RecordOutlivesKey,
+// KeysVouchingAt). The NA re-issues what is still valid under the new key.
+// Judged at its own time, as audit packs and exports judge it, a record is
+// unchanged.
+//
 // Without a key history every verifier behaves as before: a list of NA keys
 // is valid at every time.
 
@@ -49,6 +56,12 @@ const SuccessionHandover = 300 * time.Second
 // ("decision_outlives_key"), so the holder of a succeeded key cannot mint a
 // long-lived decision dated inside its window.
 const MaxDecisionLifetime = 300 * time.Second
+
+// SuccessionVouchingGrace is the vouching horizon's grace (1.8.0): how long
+// past its end and the hand-over a record of a key that has ended still
+// vouches for the present. It is also the most a verifier allows:
+// WithVouchingGrace only shortens it.
+const SuccessionVouchingGrace = 24 * time.Hour
 
 // NARecordTimeFields is the field giving the time an NA-signed record read
 // alone is placed at in the key history (v1.5.0; from v1.6.0 also a grant,
@@ -106,6 +119,16 @@ func (k NAKey) Accepts(at time.Time) bool {
 	return true
 }
 
+// End returns the key's end (1.8.0): the earlier of its succession and its
+// enforced valid_to, or nil for a key with neither.
+func (k NAKey) End() *time.Time {
+	end := k.SucceededAt
+	if k.ValidToEnforced && k.ValidTo != nil && (end == nil || k.ValidTo.Before(*end)) {
+		end = k.ValidTo
+	}
+	return end
+}
+
 // NAKeyHistory is an NA's keys in order, from a verified genesis block and
 // its successions (VerifyKeyHistory), or a list of keys valid at every time
 // (NAKeysValidAlways).
@@ -113,6 +136,70 @@ type NAKeyHistory struct {
 	SovereignID   string
 	RootPublicKey string
 	Keys          []NAKey
+	// grace is the vouching horizon's grace (1.8.0); nil is SuccessionVouchingGrace.
+	grace *time.Duration
+}
+
+// VouchingGrace returns the vouching horizon's grace of this history (1.8.0).
+func (h *NAKeyHistory) VouchingGrace() time.Duration {
+	if h.grace == nil {
+		return SuccessionVouchingGrace
+	}
+	return *h.grace
+}
+
+// WithVouchingGrace returns a copy of this history with a shorter grace
+// (1.8.0): a negative grace is 0, and one longer than the current grace
+// keeps it. Use it for the NA's unsigned vouching_grace_seconds, which may
+// only shorten the grace.
+func (h *NAKeyHistory) WithVouchingGrace(grace time.Duration) *NAKeyHistory {
+	if grace < 0 {
+		grace = 0
+	}
+	if current := h.VouchingGrace(); grace > current {
+		grace = current
+	}
+	out := *h
+	out.Keys = append([]NAKey(nil), h.Keys...)
+	out.grace = &grace
+	return &out
+}
+
+// VouchesUntil returns until when a record signed by publicKey vouches for
+// the present (1.8.0): its key's end, the hand-over and the grace. nil for a
+// key with no end, or not in this history.
+func (h *NAKeyHistory) VouchesUntil(publicKey string) *time.Time {
+	k := h.keyFor(publicKey)
+	if k == nil {
+		return nil
+	}
+	end := k.End()
+	if end == nil {
+		return nil
+	}
+	until := end.Add(SuccessionHandover + h.VouchingGrace())
+	return &until
+}
+
+// RecordOutlivesKey reports whether a record signed by publicKey no longer
+// vouches for the present at now (1.8.0): its key ended more than the
+// hand-over and the grace ago. The dynamic twin of the decision bound.
+func (h *NAKeyHistory) RecordOutlivesKey(publicKey string, now time.Time) bool {
+	until := h.VouchesUntil(publicKey)
+	return until != nil && !now.Before(*until)
+}
+
+// KeysVouchingAt returns the public keys a record dated at may be signed
+// with and that still vouch at now (1.8.0): KeysAt without the keys whose
+// horizon has passed.
+func (h *NAKeyHistory) KeysVouchingAt(at, now time.Time) []string {
+	out := []string{}
+	for _, k := range h.KeysAt(at) {
+		if !h.RecordOutlivesKey(k, now) {
+			out = append(out, k)
+		}
+	}
+	return out
 }
 
 // NAKeysValidAlways returns a history whose keys are valid at every time:
@@ -164,13 +251,7 @@ func (h *NAKeyHistory) decisionOutlivesKey(publicKey string, validUntil time.Tim
 	if k == nil {
 		return false
 	}
-	var end *time.Time
-	if k.SucceededAt != nil {
-		end = k.SucceededAt
-	}
-	if k.ValidToEnforced && k.ValidTo != nil && (end == nil || k.ValidTo.Before(*end)) {
-		end = k.ValidTo
-	}
+	end := k.End()
 	return end != nil && validUntil.After(end.Add(SuccessionHandover+MaxDecisionLifetime))
 }
 
@@ -221,7 +302,8 @@ func VerifyKeyHistory(genesisJSON, successionsJSON []byte, rootPublicKey string)
 // VerifyKeyHistoryResponse verifies the genesis block and successions of a
 // GET /na/key-history response body (VerifyKeyHistory). The response's own
 // keys and root key are not trusted: the history is rebuilt from
-// rootPublicKey.
+// rootPublicKey. From 1.8.0 the response's vouching_grace_seconds, which is
+// unsigned, is taken only to shorten the grace.
 func VerifyKeyHistoryResponse(responseJSON []byte, rootPublicKey string) (KeyHistoryVerification, error) {
 	if rootPublicKey == "" {
 		return KeyHistoryVerification{}, errors.New("genesismesh: the root public key, held out of band, is required")
@@ -234,7 +316,23 @@ func VerifyKeyHistoryResponse(responseJSON []byte, rootPublicKey string) (KeyHis
 	if body["successions"] != nil && !isList {
 		return KeyHistoryVerification{}, errors.New("genesismesh: successions must be a JSON array")
 	}
-	return verifyKeyHistory(body["genesis"], successions, rootPublicKey), nil
+	result := verifyKeyHistory(body["genesis"], successions, rootPublicKey)
+	if hint, ok := numberOf(body["vouching_grace_seconds"]); ok && result.History != nil && hint >= 0 {
+		result.History = result.History.WithVouchingGrace(time.Duration(hint * float64(time.Second)))
+	}
+	return result, nil
+}
+
+// numberOf reads a JSON number decoded by decodeJSON (json.Number or float64).
+func numberOf(v interface{}) (float64, bool) {
+	switch n := v.(type) {
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
+	case float64:
+		return n, true
+	}
+	return 0, false
 }
 
 func verifyKeyHistory(genesis interface{}, successions []interface{}, root string) KeyHistoryVerification {

@@ -28,7 +28,7 @@ var architectureLayers = []struct {
 		"strict JSON and the canonical form"},
 	{"registry", []string{"strict.go"}, []string{"json"},
 		"the embedded field registry and the strict checks"},
-	{"verifiers", []string{"verify.go", "key_history.go", "grants.go"}, []string{"json", "registry"},
+	{"verifiers", []string{"verify.go", "key_history.go", "grants.go", "vouching.go"}, []string{"json", "registry"},
 		"offline verification of NA-signed records"},
 	{"signing", []string{"auth.go"}, []string{"json"},
 		"Ed25519 keys and admin request headers"},

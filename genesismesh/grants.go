@@ -12,6 +12,7 @@ package genesismesh
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 // GrantVerification is the outcome of VerifyCapabilityGrant. Valid means the
@@ -32,6 +33,17 @@ type GrantVerification struct {
 // and its revocation are not checked here: they are the NA's and the
 // holder's.
 func VerifyCapabilityGrant(grantJSON []byte, history *NAKeyHistory) (GrantVerification, error) {
+	return verifyCapabilityGrant(grantJSON, history, nil)
+}
+
+// VerifyCapabilityGrantAt (1.8.0) is VerifyCapabilityGrant judged for the
+// present: after the checks above, a grant whose signing key has passed its
+// vouching horizon at now is refused as outlives_key (RecordOutlivesKey).
+func VerifyCapabilityGrantAt(grantJSON []byte, history *NAKeyHistory, now time.Time) (GrantVerification, error) {
+	return verifyCapabilityGrant(grantJSON, history, &now)
+}
+
+func verifyCapabilityGrant(grantJSON []byte, history *NAKeyHistory, now *time.Time) (GrantVerification, error) {
 	const model = "CapabilityGrant"
 	if history == nil {
 		return GrantVerification{}, errors.New("genesismesh: the NA's key history is required")
@@ -61,6 +73,10 @@ func VerifyCapabilityGrant(grantJSON []byte, history *NAKeyHistory) (GrantVerifi
 	}
 	if !signedAsReceived(model, obj, history.KeysAt(at)) {
 		return result("na_key_not_valid_at_time")
+	}
+	if now != nil && len(history.KeysVouchingAt(at, *now)) < len(history.KeysAt(at)) &&
+		!signedAsReceived(model, obj, history.KeysVouchingAt(at, *now)) {
+		return result("outlives_key")
 	}
 	return result("accepted")
 }
