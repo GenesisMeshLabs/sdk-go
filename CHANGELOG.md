@@ -7,6 +7,12 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.9.1] - 2026-11-04
+
+### Changed
+
+- Released with Genesis Mesh 1.9.1. Nothing changes in this SDK.
+
 ## [1.9.0] - 2026-11-04
 
 ### Changed
