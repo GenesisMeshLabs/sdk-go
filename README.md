@@ -385,6 +385,15 @@ d, err := genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionV
 })
 // d.Accepted (verified), d.Authorized (ALLOW or DENY), d.Reason
 
+// 1.9.2: without the attestation, check the decision was made for the
+// attestation or subject you expect (either may be left empty).
+d, err = genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionVerifyOptions{
+	OperatorPublicKeys:    []string{naPublicKey},
+	ExpectedAttestationID: attestationID,
+	ExpectedSubjectID:     "vendor-acme",
+})
+// another attestation or subject: "attestation_binding_mismatch"; no binding: "attestation_binding_missing"
+
 ok, err := genesismesh.VerifyDataLicensePolicySignature(licensePolicyJSON, []string{licensorKey})
 v, err := genesismesh.VerifyDataAccessIntent(intentJSON, licensePolicyJSON, []string{agentKey}, time.Now())
 // v.Valid, v.ViolationReason, v.Violations

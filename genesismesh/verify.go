@@ -319,6 +319,14 @@ type DecisionVerifyOptions struct {
 	ExpectedPolicies [][]byte
 	// ExpectedAttestation (signed MembershipAttestation JSON), when set, must match the attestation binding.
 	ExpectedAttestation []byte
+	// ExpectedAttestationID and ExpectedSubjectID (1.9.2), when not empty, must
+	// equal the attestation binding's attestation_id and subject_id: a relying
+	// party that knows which attestation or subject it expects, but does not
+	// hold the attestation, checks the decision was made for it. A decision
+	// without an attestation binding is "attestation_binding_missing", another
+	// attestation or subject "attestation_binding_mismatch". Both fields are signed.
+	ExpectedAttestationID string
+	ExpectedSubjectID     string
 }
 
 // DecisionVerification is the outcome of VerifyBoundaryDecision. Accepted means the
@@ -517,6 +525,16 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		}
 		if str(ab, "attestation_id") != str(att, "attestation_id") || ab["subject_id"] != att["subject_id"] ||
 			ab["issuer_sovereign_id"] != att["issuer_sovereign_id"] || str(ab, "attestation_digest") != digest {
+			return reject("attestation_binding_mismatch")
+		}
+	}
+	if opts.ExpectedAttestationID != "" || opts.ExpectedSubjectID != "" {
+		ab, _ := d["attestation_binding"].(map[string]interface{})
+		if ab == nil {
+			return reject("attestation_binding_missing")
+		}
+		if (opts.ExpectedAttestationID != "" && str(ab, "attestation_id") != opts.ExpectedAttestationID) ||
+			(opts.ExpectedSubjectID != "" && str(ab, "subject_id") != opts.ExpectedSubjectID) {
 			return reject("attestation_binding_mismatch")
 		}
 	}
