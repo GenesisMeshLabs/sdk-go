@@ -79,3 +79,51 @@ func TestExpectedIDsNeedAnAttestationBinding(t *testing.T) {
 		}
 	}
 }
+
+// 1.10.0: the binding names the operator key that asked (requester_key_id).
+// bd-008 names "b-ops"; bd-003 is a 1.9.x decision without the field, bd-001
+// has no attestation binding.
+func TestExpectedRequesterKeyID(t *testing.T) {
+	asked, base := decisionVector(t, "bd-008")
+	cases := []struct {
+		name      string
+		subjectID string
+		requester string
+		accepted  bool
+		reason    string
+	}{
+		{"not set", "", "", true, "authorized"},
+		{"the key that asked", "", "b-ops", true, "authorized"},
+		{"another key", "", "c-ops", false, "attestation_binding_mismatch"},
+		{"subject matches, requester does not", "sovereign-b", "c-ops", false, "attestation_binding_mismatch"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			opts := base
+			opts.ExpectedSubjectID = c.subjectID
+			opts.ExpectedRequesterKeyID = c.requester
+			res, err := VerifyBoundaryDecision(asked.Input["decision"], opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Accepted != c.accepted || res.Reason != c.reason {
+				t.Fatalf("got %v %q, want %v %q", res.Accepted, res.Reason, c.accepted, c.reason)
+			}
+		})
+	}
+	for _, id := range []string{"bd-003", "bd-001"} {
+		old, opts := decisionVector(t, id)
+		res, err := VerifyBoundaryDecision(old.Input["decision"], opts)
+		if err != nil || !res.Accepted {
+			t.Fatalf("%s without an expected requester: %v %q", id, err, res.Reason)
+		}
+		opts.ExpectedRequesterKeyID = "b-ops"
+		res, err = VerifyBoundaryDecision(old.Input["decision"], opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Accepted || res.Reason != "attestation_binding_missing" {
+			t.Fatalf("%s with an expected requester: got %v %q", id, res.Accepted, res.Reason)
+		}
+	}
+}

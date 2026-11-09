@@ -109,6 +109,9 @@ func TestConformanceInteropVectors(t *testing.T) {
 				if raw, ok := v.Input["expected_attestation"]; ok {
 					opts.ExpectedAttestation = raw
 				}
+				if raw, ok := v.Input["expected_requester_key_id"]; ok {
+					opts.ExpectedRequesterKeyID = text(t, raw)
+				}
 				res, err := VerifyBoundaryDecision(v.Input["decision"], opts)
 				if err != nil {
 					t.Fatal(err)

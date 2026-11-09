@@ -394,6 +394,13 @@ d, err = genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionVe
 })
 // another attestation or subject: "attestation_binding_mismatch"; no binding: "attestation_binding_missing"
 
+// 1.10.0: accept only a decision that this operator key asked for. A 1.9.x
+// decision has no requester: "attestation_binding_missing" only when this is set.
+d, err = genesismesh.VerifyBoundaryDecision(decisionJSON, genesismesh.DecisionVerifyOptions{
+	OperatorPublicKeys:     []string{naPublicKey},
+	ExpectedRequesterKeyID: "vendor-acme-ops",
+})
+
 ok, err := genesismesh.VerifyDataLicensePolicySignature(licensePolicyJSON, []string{licensorKey})
 v, err := genesismesh.VerifyDataAccessIntent(intentJSON, licensePolicyJSON, []string{agentKey}, time.Now())
 // v.Valid, v.ViolationReason, v.Violations

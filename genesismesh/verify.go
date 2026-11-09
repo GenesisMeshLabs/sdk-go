@@ -327,6 +327,12 @@ type DecisionVerifyOptions struct {
 	// attestation or subject "attestation_binding_mismatch". Both fields are signed.
 	ExpectedAttestationID string
 	ExpectedSubjectID     string
+	// ExpectedRequesterKeyID (1.10.0), when not empty, must equal the attestation
+	// binding's requester_key_id: the operator key that asked for the decision,
+	// which a 1.10.0 Network Authority signs into it ("attestation_binding_mismatch"
+	// for another key). A decision without the field, such as one of a 1.9.x NA,
+	// verifies as before and is "attestation_binding_missing" only when this is set.
+	ExpectedRequesterKeyID string
 }
 
 // DecisionVerification is the outcome of VerifyBoundaryDecision. Accepted means the
@@ -535,6 +541,16 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		}
 		if (opts.ExpectedAttestationID != "" && str(ab, "attestation_id") != opts.ExpectedAttestationID) ||
 			(opts.ExpectedSubjectID != "" && str(ab, "subject_id") != opts.ExpectedSubjectID) {
+			return reject("attestation_binding_mismatch")
+		}
+	}
+	if opts.ExpectedRequesterKeyID != "" {
+		ab, _ := d["attestation_binding"].(map[string]interface{})
+		requester, ok := ab["requester_key_id"].(string)
+		if ab == nil || !ok {
+			return reject("attestation_binding_missing")
+		}
+		if requester != opts.ExpectedRequesterKeyID {
 			return reject("attestation_binding_mismatch")
 		}
 	}
