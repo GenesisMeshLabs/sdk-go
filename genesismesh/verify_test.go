@@ -112,6 +112,11 @@ func TestConformanceInteropVectors(t *testing.T) {
 				if raw, ok := v.Input["expected_requester_key_id"]; ok {
 					opts.ExpectedRequesterKeyID = text(t, raw)
 				}
+				if raw, ok := v.Input["expected_policy_ids"]; ok {
+					if err := json.Unmarshal(raw, &opts.ExpectedPolicyIDs); err != nil {
+						t.Fatal(err)
+					}
+				}
 				res, err := VerifyBoundaryDecision(v.Input["decision"], opts)
 				if err != nil {
 					t.Fatal(err)

@@ -333,6 +333,13 @@ type DecisionVerifyOptions struct {
 	// for another key). A decision without the field, such as one of a 1.9.x NA,
 	// verifies as before and is "attestation_binding_missing" only when this is set.
 	ExpectedRequesterKeyID string
+	// ExpectedPolicyIDs (1.10.0) names the policies an ALLOW must rest on, at
+	// whatever version the NA signed. Each must be in the decision's policy
+	// binding with at least one enforce-mode gate of that version evaluated
+	// ("policy_binding_mismatch"; "policy_binding_missing" without a binding), so
+	// an ALLOW left when a policy was deactivated or its selector stopped
+	// matching is refused. A DENY is reported as it is.
+	ExpectedPolicyIDs []string
 }
 
 // DecisionVerification is the outcome of VerifyBoundaryDecision. Accepted means the
@@ -513,6 +520,45 @@ func VerifyBoundaryDecision(decisionJSON []byte, opts DecisionVerifyOptions) (De
 		}
 		if !same || setDigest != str(binding, "policy_set_digest") {
 			return reject("policy_binding_mismatch")
+		}
+	}
+	if len(opts.ExpectedPolicyIDs) > 0 && d["authorized"] == true {
+		if binding == nil {
+			return reject("policy_binding_missing")
+		}
+		applied, _ := binding["policies"].([]interface{})
+		refs := make([]AppliedPolicyRef, 0, len(applied))
+		versions := map[string]string{}
+		for _, item := range applied {
+			a, _ := item.(map[string]interface{})
+			v, _ := a["version"].(json.Number)
+			refs = append(refs, AppliedPolicyRef{str(a, "policy_id"), v, str(a, "policy_digest")})
+			if _, seen := versions[str(a, "policy_id")]; !seen {
+				versions[str(a, "policy_id")] = v.String()
+			}
+		}
+		setDigest, err := PolicySetDigest(refs)
+		if err != nil {
+			return DecisionVerification{}, err
+		}
+		if setDigest != str(binding, "policy_set_digest") {
+			return reject("policy_binding_mismatch")
+		}
+		evaluations, _ := binding["gate_evaluations"].([]interface{})
+		for _, policyID := range opts.ExpectedPolicyIDs {
+			version, ok := versions[policyID]
+			covered := false
+			for _, item := range evaluations {
+				e, _ := item.(map[string]interface{})
+				v, _ := e["policy_version"].(json.Number)
+				if ok && str(e, "policy_id") == policyID && v.String() == version && str(e, "mode") == "enforce" {
+					covered = true
+					break
+				}
+			}
+			if !covered {
+				return reject("policy_binding_mismatch")
+			}
 		}
 	}
 
