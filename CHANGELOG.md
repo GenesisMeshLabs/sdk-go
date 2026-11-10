@@ -7,6 +7,35 @@ Versions align with the [Genesis Mesh release sequence](https://github.com/Genes
 
 ---
 
+## [1.10.0] - 2026-11-10
+
+### Added
+
+- **Expected policy IDs (1.10.0).** `DecisionVerifyOptions.ExpectedPolicyIDs`
+  names the policies an ALLOW must rest on, at whatever version the NA
+  signed. Each must be in the decision's policy binding with at least one
+  enforce-mode gate of that version evaluated, so an ALLOW left when a policy
+  was deactivated or its selector stopped matching is refused
+  (`policy_binding_mismatch`; `policy_binding_missing` without a binding). A
+  DENY is reported as it is. The conformance vectors `bd-011` to `bd-017`
+  cover it. A 1.10.0 Network Authority can also deny such requests itself
+  (`BOUNDARY_POLICY_COVERAGE=required`); the denial arrives as
+  `unauthorized_policy_resolution_failed`.
+- **The operator key that asked is checked offline (1.10.0).** A Network
+  Authority 1.10.0 names the key that asked for an attestation-basis decision
+  in `attestation_binding.requester_key_id`, under the decision's signature.
+  `VerifyBoundaryDecision` takes
+  `DecisionVerifyOptions.ExpectedRequesterKeyID`: a different key fails with
+  `attestation_binding_mismatch`, and a decision without the field (a 1.9.x
+  NA) fails with `attestation_binding_missing` only when it is given. The
+  canonical registry lists the field, omitted when absent, and the conformance
+  vectors `bd-008` to `bd-010` cover it.
+
+### Upgrading
+
+- **Upgrade this SDK before, or with, a 1.10.0 Network Authority.** Earlier
+  releases refuse a decision that names its requester as `unknown_field`.
+
 ## [1.9.2] - 2026-11-08
 
 ### Added
